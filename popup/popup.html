@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Friender</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" crossorigin="anonymous">
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body class="d-flex flex-column">
+  <div class="container-fluid friender-container px-0 d-flex flex-column">
+    <!-- Header -->
+    <header class="header friender-header">
+      <div class="d-flex align-items-center gap-2">
+        <div class="logo-icon rounded-2 d-flex align-items-center justify-content-center"><i class="bi bi-people-fill"></i></div>
+        <span class="logo-text fw-semibold">Friender</span>
+      </div>
+      <div class="user-info text-truncate small text-muted">
+        <span id="userEmail">user@example.com</span>
+      </div>
+      <div class="d-flex gap-1">
+        <div class="icon-btn rounded d-flex align-items-center justify-content-center" id="homeBtn" title="Home"><i class="bi bi-house-door"></i></div>
+        <div class="icon-btn rounded d-flex align-items-center justify-content-center" id="settingsIconBtn" title="Settings"><i class="bi bi-gear"></i></div>
+        <div class="icon-btn rounded d-flex align-items-center justify-content-center" id="menuBtn" title="Menu"><i class="bi bi-list"></i></div>
+      </div>
+
+      <!-- Dropdown Menu -->
+      <div id="dropdownMenu" class="dropdown-menu friender-dropdown shadow-sm border-0 rounded-3">
+        <div class="menu-header">
+          <span class="menu-close" id="menuClose"><i class="bi bi-x-lg"></i></span>
+        </div>
+        <div class="menu-items">
+          <div class="menu-item" id="menuTraining">
+            <span class="menu-icon"><i class="bi bi-play-fill"></i></span>
+            <span class="menu-text">Training</span>
+          </div>
+          <div class="menu-item" id="menuDeletePending">
+            <span class="menu-icon"><i class="bi bi-trash"></i></span>
+            <span class="menu-text">Delete Pending Request</span>
+          </div>
+          <div class="menu-item" id="menuChangePassword">
+            <span class="menu-icon"><i class="bi bi-key"></i></span>
+            <span class="menu-text">Change Password</span>
+          </div>
+          <div class="menu-item" id="menuSettings">
+            <span class="menu-icon"><i class="bi bi-gear"></i></span>
+            <span class="menu-text">Settings</span>
+          </div>
+          <div class="menu-item" id="menuManageAccount">
+            <span class="menu-icon"><i class="bi bi-person-gear"></i></span>
+            <span class="menu-text">Manage my account</span>
+          </div>
+          <div class="menu-item logout-item" id="menuLogout">
+            <span class="menu-icon logout-icon"><i class="bi bi-box-arrow-right"></i></span>
+            <span class="menu-text">Logout</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Home Page (Segments/Groups/Settings Tabs) -->
+    <div id="homePage" class="page flex-grow-1">
+      <div class="content-card card border-0 shadow-sm rounded-3 mx-2 my-2 flex-grow-1 d-flex flex-column overflow-hidden">
+        <ul class="nav nav-tabs nav-fill px-2 pt-2 border-0 bg-light rounded-top-3 tabs" role="tablist">
+          <li class="nav-item"><button type="button" class="tab-btn nav-link active rounded-2 border-0 py-2" data-tab="segments"><span class="tab-icon"><i class="bi bi-chat-text"></i></span> Segments</button></li>
+          <li class="nav-item"><button type="button" class="tab-btn nav-link rounded-2 border-0 py-2" data-tab="groups"><span class="tab-icon"><i class="bi bi-people"></i></span> Groups</button></li>
+          <li class="nav-item"><button type="button" class="tab-btn nav-link rounded-2 border-0 py-2" data-tab="settings"><span class="tab-icon"><i class="bi bi-gear"></i></span> Settings</button></li>
+        </ul>
+        <div class="tab-content flex-grow-1 overflow-auto p-2">
+          <div id="segmentsTab" class="tab-pane active">
+            <div class="d-flex justify-content-between align-items-center mb-2 section-header">
+              <h2 class="h5 mb-0 fw-semibold">Message Segments</h2>
+              <button type="button" class="btn btn-primary btn-sm rounded-2 btn-add"><i class="bi bi-plus-lg me-1"></i>Add</button>
+            </div>
+            <div id="segmentsList" class="items-list"></div>
+          </div>
+          <div id="groupsTab" class="tab-pane">
+            <div class="d-flex justify-content-between align-items-center mb-2 section-header">
+              <h2 class="h5 mb-0 fw-semibold">Message Groups</h2>
+              <button type="button" class="btn btn-primary btn-sm rounded-2 btn-add"><i class="bi bi-plus-lg me-1"></i>Add</button>
+            </div>
+            <div id="groupsList" class="items-list"></div>
+          </div>
+          <div id="homeSettingsTab" class="tab-pane">
+            <div class="d-flex justify-content-between align-items-center mb-2 section-header">
+              <h2 class="h5 mb-0 fw-semibold">Messaging</h2>
+              <label class="toggle-switch-label form-check form-switch mb-0">
+                <input type="checkbox" id="activateSettings" class="form-check-input toggle-switch">
+                <span class="form-check-label">Activate</span>
+              </label>
+            </div>
+            <div class="alert alert-info py-2 small mb-2 info-banner">Refresh Facebook after changes.</div>
+            <div class="row g-2 message-cards-container mb-2">
+              <div class="col-12 col-md-4"><div class="message-card blue-card card h-100 border-0 shadow-sm">
+                <div class="card-body text-center d-flex flex-column">
+                  <div class="form-check form-switch justify-content-center card-checkbox"><input type="checkbox" id="messageOnNewRequest" class="form-check-input"></div>
+                  <div class="card-icon blue-icon rounded-circle mx-auto my-2"><i class="bi bi-chat-dots-fill"></i></div>
+                  <p class="card-text small flex-grow-1">Send message when you receive a new friend request</p>
+                  <select id="msgOnNewRequestGroup" class="form-select form-select-sm card-dropdown"></select>
+                </div>
+              </div></div>
+              <div class="col-12 col-md-4"><div class="message-card green-card card h-100 border-0 shadow-sm">
+                <div class="card-body text-center d-flex flex-column">
+                  <div class="form-check form-switch justify-content-center card-checkbox"><input type="checkbox" id="messageOnAccept" class="form-check-input"></div>
+                  <div class="card-icon green-icon rounded-circle mx-auto my-2"><i class="bi bi-chat-dots-fill"></i></div>
+                  <p class="card-text small flex-grow-1">Send when you accept a friend request</p>
+                  <select id="msgOnAcceptGroup" class="form-select form-select-sm card-dropdown"></select>
+                </div>
+              </div></div>
+              <div class="col-12 col-md-4"><div class="message-card red-card card h-100 border-0 shadow-sm">
+                <div class="card-body text-center d-flex flex-column">
+                  <div class="form-check form-switch justify-content-center card-checkbox"><input type="checkbox" id="messageOnDecline" class="form-check-input"></div>
+                  <div class="card-icon red-icon rounded-circle mx-auto my-2"><i class="bi bi-chat-dots-fill"></i></div>
+                  <p class="card-text small flex-grow-1">Send when you decline a friend request</p>
+                  <select id="msgOnDeclineGroup" class="form-select form-select-sm card-dropdown"></select>
+                </div>
+              </div></div>
+            </div>
+            <div class="save-settings-container"><button type="button" class="btn btn-outline-primary rounded-2 btn-save-settings">Save Settings</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Page - Friend Suggestions -->
+    <div id="settingsPage" class="page active flex-grow-1">
+      <div class="content-card card border-0 shadow-sm rounded-3 mx-2 my-2 overflow-hidden">
+        <div class="card-body settings-page-body">
+          <div class="row g-0 settings-form two-column">
+            <div class="col-md-6 column">
+              <div class="form-group mb-2">
+                <label class="form-label small fw-medium">Look up Interval</label>
+                <select id="lookupInterval" class="form-select form-select-sm rounded-2 form-control">
+                  <option value="auto">Auto (Between 30-60 Seconds)</option>
+                  <option value="30">30 Seconds</option>
+                  <option value="45">45 Seconds</option>
+                  <option value="60">60 Seconds</option>
+                </select>
+              </div>
+              <div class="form-group mb-2">
+                <label class="form-label small fw-medium">Requests Limit</label>
+                <div class="toggle-buttons btn-group btn-group-sm w-100 rounded-2" role="group">
+                  <button type="button" id="limitLimited" class="toggle-btn btn btn-outline-primary active"><i class="bi bi-clock me-1"></i>Limited</button>
+                  <button type="button" id="limitInfinite" class="toggle-btn btn btn-outline-primary"><i class="bi bi-infinity me-1"></i>Infinite</button>
+                </div>
+              </div>
+              <div class="form-group mb-2">
+                <label class="form-label small fw-medium">Number of Requests</label>
+                <input type="number" id="numberOfRequests" class="form-control form-control-sm rounded-2" value="2" min="1">
+              </div>
+              <div class="form-group mb-2" id="resumeSearchGroup">
+                <label class="form-label small fw-medium">Resume from last search</label>
+                <div class="radio-group d-flex gap-3">
+                  <label class="radio-label form-check"><input type="radio" name="resumeSearch" value="yes" class="form-check-input"><span class="form-check-label">Yes</span></label>
+                  <label class="radio-label form-check"><input type="radio" name="resumeSearch" value="no" checked class="form-check-input"><span class="form-check-label">No</span></label>
+                </div>
+              </div>
+              <div class="form-group mb-2" id="lastSearchPositionGroup">
+                <label class="form-label small fw-medium">Your last search member's position</label>
+                <input type="text" id="lastSearchPosition" class="form-control form-control-sm rounded-2" placeholder="Index number to start from">
+              </div>
+              <div class="form-group mb-2 toggle-container">
+                <label class="form-check form-switch">
+                  <input type="checkbox" id="useGenderFilter" class="form-check-input toggle-switch">
+                  <span class="form-check-label small">Use Gender Filter</span>
+                </label>
+                <div id="genderOptions" class="filter-box-horizontal mt-1 small" style="display: none;">
+                  <span class="filter-label-inline d-block mb-1">Select Gender</span>
+                  <div class="radio-group-inline d-flex gap-3">
+                    <label class="radio-label form-check"><input type="radio" name="gender" value="male" class="form-check-input"><span class="form-check-label">Male</span></label>
+                    <label class="radio-label form-check"><input type="radio" name="gender" value="female" class="form-check-input"><span class="form-check-label">Female</span></label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 column">
+              <div class="form-group mb-2">
+                <label class="form-check form-switch">
+                  <input type="checkbox" id="useCountryFilter" class="form-check-input toggle-switch" checked>
+                  <span class="form-check-label small">Use Country Filter</span>
+                </label>
+                <div id="countryOptions" class="filter-box mt-1 p-2 rounded-2 bg-light small">
+                  <div class="radio-group d-flex gap-3 filter-radio-group">
+                    <label class="radio-label form-check">
+                      <input type="radio" name="countryFilter" value="tier" checked class="form-check-input">
+                      <span class="form-check-label">Tier Level</span>
+                    </label>
+                    <label class="radio-label form-check">
+                      <input type="radio" name="countryFilter" value="country" class="form-check-input">
+                      <span class="form-check-label">Country Level</span>
+                    </label>
+                  </div>
+                  <div id="tierSelection" class="multi-select-container">
+                    <div class="multi-select-box form-control form-control-sm" id="tierSelectBox">
+                      <span class="placeholder">Select Tiers</span>
+                    </div>
+                    <div class="multi-select-dropdown" id="tierDropdown">
+                      <div class="dropdown-list" id="tierList">
+                        <div class="dropdown-item" data-tier="1">Tier 1
+                          <div class="tier-tooltip">
+                            <strong>Tier 1 Countries</strong>
+                            <ul>
+                              <li>United States, Canada, United Kingdom, Australia, New Zealand</li>
+                              <li>Germany, France, Netherlands, Belgium, Switzerland, Sweden, Norway, Denmark, Finland, Austria, Ireland</li>
+                              <li>Japan, Singapore, South Korea</li>
+                            </ul>
+                          </div>
+                        </div>
+                        <div class="dropdown-item" data-tier="2">Tier 2
+                          <div class="tier-tooltip">
+                            <strong>Tier 2 Countries</strong>
+                            <ul>
+                              <li>India, China, Malaysia, Thailand, Vietnam, Indonesia, Philippines, Sri Lanka</li>
+                              <li>UAE, Saudi Arabia, Qatar, Kuwait, Bahrain</li>
+                              <li>Poland, Czech Republic, Hungary, Romania, Portugal, Spain, Italy, Greece</li>
+                              <li>Brazil, Mexico, Argentina, Chile, Colombia</li>
+                              <li>South Africa, Egypt</li>
+                            </ul>
+                          </div>
+                        </div>
+                        <div class="dropdown-item" data-tier="3">Tier 3
+                          <div class="tier-tooltip">
+                            <strong>Tier 3 Countries</strong>
+                            <ul>
+                              <li>Pakistan, Bangladesh, Nepal, Afghanistan, Myanmar, Cambodia, Laos</li>
+                              <li>Nigeria, Kenya, Ghana, Ethiopia, Uganda, Tanzania, Rwanda, Zimbabwe</li>
+                              <li>Iraq, Yemen, Syria</li>
+                              <li>Bolivia, Peru, Venezuela, Haiti</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="countryMultiSelect" class="multi-select-container" style="display: none;">
+                    <div class="multi-select-box form-control form-control-sm" id="countrySelectBox">
+                      <span class="placeholder">Select Some Options</span>
+                    </div>
+                    <div class="multi-select-dropdown" id="countryDropdown">
+                      <input type="text" class="form-control form-control-sm border-0 border-bottom rounded-0" placeholder="Search countries...">
+                      <div class="dropdown-list" id="countryList"><!-- Populated via JS --></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group mb-2">
+                <label class="form-label small fw-medium label-with-icons">
+                  <span>Keywords</span>
+                  <i class="bi bi-chevron-down text-primary small ms-1"></i>
+                  <i class="bi bi-info-circle text-primary small ms-1"></i>
+                </label>
+                <div class="tags-input-container">
+                  <div class="tags-input form-control form-control-sm d-flex flex-wrap gap-1 align-items-center" id="keywordsInputSettings">
+                    <input type="text" class="tags-input-field border-0 flex-grow-1" placeholder="Type and press comma(,) to separate">
+                  </div>
+                </div>
+              </div>
+              <div class="form-group mb-2">
+                <label class="form-label small fw-medium label-with-icons">
+                  <span>Negative Keywords</span>
+                  <i class="bi bi-chevron-down text-primary small ms-1"></i>
+                  <i class="bi bi-info-circle text-primary small ms-1"></i>
+                </label>
+                <div class="tags-input-container">
+                  <div class="tags-input form-control form-control-sm d-flex flex-wrap gap-1 align-items-center" id="negativeKeywordsInputSettings">
+                    <input type="text" class="tags-input-field border-0 flex-grow-1" placeholder="Type and press comma(,) to separate">
+                  </div>
+                </div>
+              </div>
+              <div class="form-group mb-2">
+                <label class="form-label small fw-medium">Message Groups</label>
+                <select id="messageGroups" class="form-select form-select-sm rounded-2 form-control">
+                <option value="test12">test12</option>
+                <option value="default">Default</option>
+              </select>
+              </div>
+              <div class="form-group mb-2">
+                <label class="form-label small fw-medium">Mutual Friends</label>
+                <div class="mutual-friends-group d-flex gap-2 align-items-center flex-wrap">
+                  <select id="mutualFriendsOperator" class="form-select form-select-sm rounded-2 flex-grow-1" style="min-width: 120px;">
+                    <option value="greater">Greater than equal</option>
+                    <option value="equal">Equal to</option>
+                    <option value="less">Less than equal</option>
+                  </select>
+                  <input type="number" id="mutualFriendsCount" class="form-control form-control-sm rounded-2 small" value="1" min="0" style="width: 80px;">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-center run-buttons-section mt-2 pt-2 pb-2 border-top">
+            <button type="button" id="runBtn" class="btn-run btn btn-primary rounded-3 px-4">
+              <i class="bi bi-lightning-charge-fill me-1"></i><span>Run</span>
+            </button>
+            <div class="automation-controls d-flex gap-2 justify-content-center mt-2" id="automationControls" style="display: none;">
+              <button type="button" id="pauseBtn" class="btn-control btn btn-warning btn-sm rounded-2">Pause</button>
+              <button type="button" id="stopBtn" class="btn-control btn btn-outline-danger btn-sm rounded-2">Stop</button>
+            </div>
+          </div>
+        </div>
+
+
+      </div>
+    </div>
+
+    <!-- Instruction Page - Shows on Wrong Pages -->
+    <div id="instructionPage" class="page flex-grow-1">
+      <div class="content-card card border-0 shadow-sm rounded-3 mx-2 my-2">
+        <div class="instruction-content card-body p-4 text-center">
+          <h1 class="h4 fw-bold text-dark mb-4">Trying to add friends? Connect with friends like a Pro</h1>
+          <p class="text-muted small mb-3">To activate the Friender please re-open this window on:</p>
+          <ul class="instruction-list list-unstyled text-start mb-4">
+            <li class="d-flex align-items-start gap-3 p-3 bg-light rounded-3 mb-2 border border-opacity-25">
+              <span class="icon flex-shrink-0 rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;"><i class="bi bi-people-fill"></i></span>
+              <div>
+                <strong class="d-block">Members list of a group</strong>
+                <span class="hint small text-muted">Navigate to any Facebook group and click on "Members"</span>
+              </div>
+            </li>
+            <li class="d-flex align-items-start gap-3 p-3 bg-light rounded-3 mb-2 border border-opacity-25">
+              <span class="icon flex-shrink-0 rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;"><i class="bi bi-search"></i></span>
+              <div>
+                <strong class="d-block">Your Suggested friends list</strong>
+                <span class="hint small text-muted">Go to Facebook Friends → Find Friends → People You May Know</span>
+              </div>
+            </li>
+            <li class="d-flex align-items-start gap-3 p-3 bg-light rounded-3 mb-2 border border-opacity-25">
+              <span class="icon flex-shrink-0 rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;"><i class="bi bi-person"></i></span>
+              <div>
+                <strong class="d-block">A Friend's Friend list</strong>
+                <span class="hint small text-muted">Visit any friend's profile and click on "Friends"</span>
+              </div>
+            </li>
+          </ul>
+          <div class="instruction-note alert alert-warning text-start small mb-4">
+            <strong>Note:</strong> To re-open this tutorial, open this window on a Facebook page with no friends list on it.
+          </div>
+          <div class="quick-actions pt-3 border-top">
+            <h3 class="h6 fw-semibold mb-3">Quick Navigation</h3>
+            <div class="action-buttons d-flex gap-2 justify-content-center flex-wrap">
+              <button type="button" class="action-btn-primary btn btn-primary rounded-3 px-3" id="goToFriendsBtn">
+                <i class="bi bi-search me-1"></i>
+                <span>Go to Friend Suggestions</span>
+              </button>
+              <button type="button" class="action-btn-primary btn btn-primary rounded-3 px-3" id="goToGroupsBtn">
+                <i class="bi bi-people me-1"></i>
+                <span>Go to Groups</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Groups People Page Settings - Shows on Groups People Page -->
+    <div id="groupsPage" class="page flex-grow-1">
+      <div class="content-card card border-0 shadow-sm rounded-3 mx-2 my-2">
+        <div class="card-body groups-page-body">
+        <div class="row g-0 settings-form two-column">
+          <div class="col-md-6 column">
+            <div class="form-group mb-2">
+              <label class="form-label small fw-medium">Look up Interval</label>
+              <select id="lookupIntervalGroups" class="form-select form-select-sm rounded-2 form-control">
+                <option value="auto">Auto (Between 30-60 Seconds)</option>
+                <option value="30">30 Seconds</option>
+                <option value="45">45 Seconds</option>
+                <option value="60">60 Seconds</option>
+              </select>
+            </div>
+            <div class="form-group mb-2">
+              <label class="form-label small fw-medium">Requests Limit</label>
+              <div class="toggle-buttons btn-group btn-group-sm w-100 rounded-2">
+                <button type="button" id="limitLimitedGroups" class="toggle-btn btn btn-outline-primary active"><i class="bi bi-clock me-1"></i>Limited</button>
+                <button type="button" id="limitInfiniteGroups" class="toggle-btn btn btn-outline-primary"><i class="bi bi-infinity me-1"></i>Infinite</button>
+              </div>
+            </div>
+            <div class="form-group mb-2">
+              <label class="form-label small fw-medium">Number of Requests</label>
+              <input type="number" id="numberOfRequestsGroups" class="form-control form-control-sm rounded-2" value="10" min="1">
+            </div>
+            <div class="form-group mb-2">
+              <label class="form-label small fw-medium">Resume from last search</label>
+              <div class="radio-group d-flex gap-3">
+                <label class="radio-label form-check"><input type="radio" name="resumeSearch" value="yes" class="form-check-input"><span class="form-check-label">Yes</span></label>
+                <label class="radio-label form-check"><input type="radio" name="resumeSearch" value="no" checked class="form-check-input"><span class="form-check-label">No</span></label>
+              </div>
+            </div>
+            <div class="form-group mb-2">
+              <label class="form-label small fw-medium">Your last search member's position</label>
+              <input type="text" id="lastSearchPositionGroups" class="form-control form-control-sm rounded-2" placeholder="Index number to start from">
+            </div>
+            <div class="form-group mb-2 toggle-container">
+              <label class="form-check form-switch">
+                <input type="checkbox" id="useGenderFilterGroups" class="form-check-input toggle-switch">
+                <span class="form-check-label small">Use Gender Filter</span>
+              </label>
+              <div id="genderOptionsGroups" class="filter-box-horizontal mt-1 small" style="display: none;">
+                <span class="filter-label-inline d-block mb-1">Select Gender</span>
+                <div class="radio-group-inline d-flex gap-3">
+                  <label class="radio-label form-check"><input type="radio" name="genderGroups" value="male" class="form-check-input"><span class="form-check-label">Male</span></label>
+                  <label class="radio-label form-check"><input type="radio" name="genderGroups" value="female" class="form-check-input"><span class="form-check-label">Female</span></label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 column">
+            <div class="form-group mb-2">
+              <label class="form-check form-switch">
+                <input type="checkbox" id="useCountryFilterGroups" class="form-check-input toggle-switch">
+                <span class="form-check-label small">Use Country Filter</span>
+              </label>
+              <div id="countryOptionsGroups" class="filter-box mt-1 p-2 rounded-2 bg-light small" style="display: none;">
+                <div class="radio-group d-flex gap-3 mb-2">
+                  <label class="radio-label form-check"><input type="radio" name="countryFilterGroups" value="tier" class="form-check-input"><span class="form-check-label">Tier Level</span></label>
+                  <label class="radio-label form-check"><input type="radio" name="countryFilterGroups" value="country" class="form-check-input"><span class="form-check-label">Country Level</span></label>
+                </div>
+                <div id="tierSelectionGroups" class="multi-select-container" style="display: none;">
+                  <div class="multi-select-box form-control form-control-sm" id="tierSelectBoxGroups"><span class="placeholder">Select Tiers</span></div>
+                  <div class="multi-select-dropdown" id="tierDropdownGroups">
+                    <div class="dropdown-list" id="tierListGroups">
+                      <div class="dropdown-item" data-tier="1">Tier 1<div class="tier-tooltip"><strong>Tier 1 Countries</strong><ul><li>United States, Canada, United Kingdom, Australia, New Zealand</li><li>Germany, France, Netherlands, Belgium, Switzerland, Sweden, Norway, Denmark, Finland, Austria, Ireland</li><li>Japan, Singapore, South Korea</li></ul></div></div>
+                      <div class="dropdown-item" data-tier="2">Tier 2<div class="tier-tooltip"><strong>Tier 2 Countries</strong><ul><li>India, China, Malaysia, Thailand, Vietnam, Indonesia, Philippines, Sri Lanka</li><li>UAE, Saudi Arabia, Qatar, Kuwait, Bahrain</li><li>Poland, Czech Republic, Hungary, Romania, Portugal, Spain, Italy, Greece</li><li>Brazil, Mexico, Argentina, Chile, Colombia</li><li>South Africa, Egypt</li></ul></div></div>
+                      <div class="dropdown-item" data-tier="3">Tier 3<div class="tier-tooltip"><strong>Tier 3 Countries</strong><ul><li>Pakistan, Bangladesh, Nepal, Afghanistan, Myanmar, Cambodia, Laos</li><li>Nigeria, Kenya, Ghana, Ethiopia, Uganda, Tanzania, Rwanda, Zimbabwe</li><li>Iraq, Yemen, Syria</li><li>Bolivia, Peru, Venezuela, Haiti</li></ul></div></div>
+                    </div>
+                  </div>
+                </div>
+                <div id="countryMultiSelectGroups" class="multi-select-container" style="display: none;">
+                  <div class="multi-select-box form-control form-control-sm" id="countrySelectBoxGroups"><span class="placeholder">Select Some Options</span></div>
+                  <div class="multi-select-dropdown" id="countryDropdownGroups">
+                    <input type="text" class="form-control form-control-sm border-0 border-bottom rounded-0" placeholder="Search countries...">
+                    <div class="dropdown-list" id="countryListGroups"><!-- Populated via JS --></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group mb-2">
+              <label class="form-label small fw-medium label-with-icons">
+                <span>Keywords</span>
+                <i class="bi bi-chevron-down text-primary small ms-1"></i>
+                <i class="bi bi-info-circle text-primary small ms-1"></i>
+              </label>
+              <div class="tags-input-container">
+                <div class="tags-input form-control form-control-sm d-flex flex-wrap gap-1 align-items-center" id="keywordsInput">
+                  <input type="text" class="tags-input-field border-0 flex-grow-1" placeholder="Type and press comma(,) to separate">
+                </div>
+              </div>
+            </div>
+            <div class="form-group mb-2">
+              <label class="form-label small fw-medium label-with-icons">
+                <span>Negative Keywords</span>
+                <i class="bi bi-chevron-down text-primary small ms-1"></i>
+                <i class="bi bi-info-circle text-primary small ms-1"></i>
+              </label>
+              <div class="tags-input-container">
+                <div class="tags-input form-control form-control-sm d-flex flex-wrap gap-1 align-items-center" id="negativeKeywordsInput">
+                  <input type="text" class="tags-input-field border-0 flex-grow-1" placeholder="Type and press comma(,) to separate">
+                </div>
+              </div>
+            </div>
+            <div class="form-group mb-2">
+              <label class="form-label small fw-medium">Message Groups</label>
+              <select id="messageGroupsGroups" class="form-select form-select-sm rounded-2 form-control">
+                <option value="">-- Choose --</option>
+                <option value="test12">test12</option>
+                <option value="default">Default</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="text-center run-buttons-section mt-2 pt-2 pb-2 border-top">
+          <button type="button" id="runBtnGroups" class="btn-run btn btn-primary rounded-3 px-4">
+            <i class="bi bi-lightning-charge-fill me-1"></i><span>Run</span>
+          </button>
+          <div class="automation-controls d-flex gap-2 justify-content-center mt-2" id="automationControlsGroups" style="display: none;">
+            <button type="button" id="pauseBtnGroups" class="btn-control btn btn-warning btn-sm rounded-2">Pause</button>
+            <button type="button" id="stopBtnGroups" class="btn-control btn btn-outline-danger btn-sm rounded-2">Stop</button>
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Message Segment Page -->
+    <div id="createSegmentPage" class="page flex-grow-1">
+      <div class="content-card card border-0 shadow-sm rounded-3 mx-2 my-2">
+        <div class="page-header-with-back card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
+          <h2 class="h5 mb-0 fw-semibold">Create Message Segment</h2>
+          <button type="button" class="back-btn btn btn-outline-primary btn-sm rounded-2" id="segmentBackBtn"><i class="bi bi-arrow-left me-1"></i>Back</button>
+        </div>
+        <div class="card-body p-3 settings-form">
+          <div class="form-group mb-3">
+            <label class="form-label small fw-medium">Enter Title</label>
+            <input type="text" id="segmentTitle" class="form-control form-control-sm rounded-2" placeholder="Enter your message segment title">
+          </div>
+          <div class="form-group mb-3">
+            <label class="form-label small fw-medium">Create Message Block (s)</label>
+            <div class="instruction-small text-muted small mb-1">Click on the <strong>"keyword"</strong> to insert into your message</div>
+            <textarea id="segmentMessage" class="form-control rounded-2" rows="5"></textarea>
+          </div>
+          <div class="keyword-buttons d-flex gap-2 flex-wrap mb-3">
+            <button type="button" class="keyword-btn btn btn-outline-secondary btn-sm rounded-pill" data-keyword="{First Name}">{First Name}</button>
+            <button type="button" class="keyword-btn btn btn-outline-secondary btn-sm rounded-pill" data-keyword="{Last Name}">{Last Name}</button>
+          </div>
+          <div class="action-footer">
+            <button type="button" class="btn-save-action btn btn-primary w-100 rounded-3 py-2" id="saveSegmentBtn"><i class="bi bi-save me-1"></i>Save Message Segment</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Message Group Page -->
+    <div id="createGroupPage" class="page flex-grow-1">
+      <div class="content-card card border-0 shadow-sm rounded-3 mx-2 my-2">
+        <div class="page-header-with-back card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
+          <h2 class="h5 mb-0 fw-semibold">Create Message Group</h2>
+          <button type="button" class="back-btn btn btn-outline-primary btn-sm rounded-2" id="groupBackBtn"><i class="bi bi-arrow-left me-1"></i>Back</button>
+        </div>
+        <div class="card-body p-3 settings-form">
+          <div class="form-group mb-3">
+            <label class="form-label small fw-medium">Enter Title</label>
+            <input type="text" id="groupTitle" class="form-control form-control-sm rounded-2" placeholder="Enter your message group title">
+          </div>
+          <div class="form-group mb-3">
+            <label class="form-label small fw-medium">Build Message Set</label>
+            <div class="message-set-builder border rounded-3 p-3 bg-light">
+              <div id="groupMessageItems" class="message-items-container mb-2"></div>
+              <div class="insert-wrapper">
+                <button type="button" class="btn-insert btn btn-outline-primary btn-sm rounded-2" id="insertSegmentBtn">+ Insert</button>
+                <div id="insertDropdown" class="insert-dropdown shadow-sm rounded-2 border">
+                  <div class="insert-option" data-type="segment">Message Segment</div>
+                  <div class="insert-option" data-type="static">Static Text</div>
+                  <div class="insert-option" data-type="keyword">Keywords</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="action-footer">
+            <button type="button" class="btn-save-action btn btn-primary w-100 rounded-3 py-2" id="saveGroupBtn"><i class="bi bi-save me-1"></i>Save Message Group</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change Password Page -->
+    <div id="changePasswordPage" class="page flex-grow-1">
+      <div class="content-card card border-0 shadow-sm rounded-3 mx-2 my-2">
+        <div class="page-header-with-back card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
+          <h2 class="h5 mb-0 fw-semibold">Change Password</h2>
+          <button type="button" class="back-btn btn btn-outline-primary btn-sm rounded-2" id="passwordBackBtn"><i class="bi bi-arrow-left me-1"></i>Back</button>
+        </div>
+        <div class="card-body p-3 settings-form">
+          <div class="form-group mb-3">
+            <label class="form-label small fw-medium">Old Password</label>
+            <input type="password" id="oldPassword" class="form-control form-control-sm rounded-2" placeholder="Your old password">
+          </div>
+          <div class="form-group mb-3">
+            <label class="form-label small fw-medium">New Password</label>
+            <input type="password" id="newPassword" class="form-control form-control-sm rounded-2" placeholder="Set new password">
+          </div>
+          <div class="form-group mb-3">
+            <label class="form-label small fw-medium">Confirm Password</label>
+            <input type="password" id="confirmPassword" class="form-control form-control-sm rounded-2" placeholder="Set new password">
+          </div>
+          <div class="action-footer text-center">
+            <button type="button" class="btn-save-action btn btn-primary rounded-3 px-4" id="resetPasswordBtn">Reset Password</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manage Account Page -->
+    <div id="manageAccountPage" class="page flex-grow-1">
+      <div class="content-card card border-0 shadow-sm rounded-3 mx-2 my-2">
+        <div class="page-header-with-back card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
+          <h2 class="h5 mb-0 fw-semibold">Manage My Account</h2>
+          <button type="button" class="back-btn btn btn-outline-primary btn-sm rounded-2" id="accountBackBtn"><i class="bi bi-arrow-left me-1"></i>Back</button>
+        </div>
+        <div class="account-container card-body p-4">
+          <div class="user-profile-header d-flex align-items-center gap-3 pb-3 mb-3 border-bottom">
+            <div class="profile-avatar rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 64px; height: 64px; font-size: 2rem;">👤</div>
+            <div class="profile-info">
+              <h3 class="h5 mb-1" id="accountUserName">Member</h3>
+              <p class="text-muted small mb-0" id="accountUserEmailDisp">user@example.com</p>
+            </div>
+          </div>
+          <div class="details-list mb-4">
+            <div class="detail-item d-flex justify-content-between py-2 border-bottom">
+              <span class="detail-label fw-medium">Plan:</span>
+              <span class="detail-value text-primary fw-semibold">Active</span>
+            </div>
+            <div class="detail-item d-flex justify-content-between py-2 border-bottom">
+              <span class="detail-label fw-medium">Renewal Date:</span>
+              <span class="detail-value">Dec 31, 2026</span>
+            </div>
+            <div class="detail-item d-flex justify-content-between py-2 border-bottom">
+              <span class="detail-label fw-medium">Status:</span>
+              <span class="detail-value tag-success">Active</span>
+            </div>
+            <div class="detail-item d-flex justify-content-between py-2 border-bottom">
+              <span class="detail-label fw-medium">Total Contacts:</span>
+              <span class="detail-value" id="accountTotalContacts">0</span>
+            </div>
+          </div>
+          <div class="account-actions d-flex gap-2">
+            <button type="button" class="btn-outline-action btn btn-outline-primary flex-grow-1 rounded-2" id="editProfileBtn">Edit Profile</button>
+            <button type="button" class="btn-outline-action danger btn btn-outline-danger flex-grow-1 rounded-2" id="deactivateAccountBtn">Deactivate Account</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="viewModal" class="modal">
+      <div class="modal-content card border-0 shadow rounded-3 overflow-hidden">
+        <div class="modal-header card-header bg-light border-bottom d-flex justify-content-between align-items-center py-3">
+          <h3 class="h6 mb-0 fw-semibold" id="viewModalTitle">View Content</h3>
+          <span class="modal-close btn btn-sm btn-link text-muted text-decoration-none p-0" id="viewModalClose" aria-label="Close"><i class="bi bi-x-lg"></i></span>
+        </div>
+        <div class="modal-body card-body p-3" id="viewModalContent"><!-- Content goes here --></div>
+      </div>
+    </div>
+
+    <div id="selectSegmentModal" class="modal">
+      <div class="modal-content card border-0 shadow rounded-3 overflow-hidden">
+        <div class="modal-header card-header bg-light border-bottom d-flex justify-content-between align-items-center py-3">
+          <h3 class="h6 mb-0 fw-semibold">Select Message Segment</h3>
+          <span class="modal-close btn btn-sm btn-link text-muted text-decoration-none p-0" id="selectSegmentClose" aria-label="Close"><i class="bi bi-x-lg"></i></span>
+        </div>
+        <div class="modal-body card-body p-3">
+          <div id="segmentsDropdownList" class="selection-list d-flex flex-column gap-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="staticTextModal" class="modal">
+      <div class="modal-content card border-0 shadow rounded-3 overflow-hidden">
+        <div class="modal-header card-header bg-light border-bottom d-flex justify-content-between align-items-center py-3">
+          <h3 class="h6 mb-0 fw-semibold">Enter Static Text</h3>
+          <span class="modal-close btn btn-sm btn-link text-muted text-decoration-none p-0" id="staticTextClose" aria-label="Close"><i class="bi bi-x-lg"></i></span>
+        </div>
+        <div class="modal-body card-body p-3">
+          <textarea id="staticTextInput" class="form-control rounded-2 mb-3" rows="4" placeholder="Enter your text here..."></textarea>
+          <button type="button" class="btn-save-action btn btn-primary w-100 rounded-2" id="saveStaticTextBtn">Add Text</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="keywordsModal" class="modal">
+      <div class="modal-content card border-0 shadow rounded-3 overflow-hidden">
+        <div class="modal-header card-header bg-light border-bottom d-flex justify-content-between align-items-center py-3">
+          <h3 class="h6 mb-0 fw-semibold">Select Keywords</h3>
+          <span class="modal-close btn btn-sm btn-link text-muted text-decoration-none p-0" id="keywordsClose" aria-label="Close"><i class="bi bi-x-lg"></i></span>
+        </div>
+        <div class="modal-body card-body p-3">
+          <div class="keyword-selection-list d-flex flex-column gap-2">
+            <div class="keyword-option rounded-2 border p-2 cursor-pointer" data-keyword="{First Name}">{First Name}</div>
+            <div class="keyword-option rounded-2 border p-2 cursor-pointer" data-keyword="{Last Name}">{Last Name}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer (all pages) -->
+    <footer class="footer friender-footer">
+      <div class="footer-content">
+        <div class="footer-left">
+          <span class="footer-company">5 dollar friday</span>
+          <a href="#" class="footer-link" id="footerPrivacy">Privacy</a>
+          <a href="#" class="footer-link" id="footerTerms">Terms</a>
+        </div>
+        <div class="footer-right">
+          <span class="footer-version" id="footerVersion">v1.0.0</span>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>

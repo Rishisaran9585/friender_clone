@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Icons - Friender Extension</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 700px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #667eea;
+    }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    button:hover {
+      background: #5568d3;
+    }
+    .instructions {
+      background: #e7f3ff;
+      padding: 15px;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+    .preview {
+      margin: 20px 0;
+    }
+    canvas {
+      border: 1px solid #ddd;
+      margin: 10px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 Create Extension Icons</h1>
+    
+    <div class="instructions">
+      <strong>Instructions:</strong>
+      <ol>
+        <li>Click "Generate All Icons" below</li>
+        <li>Three download links will appear</li>
+        <li>Download each icon (icon16.png, icon48.png, icon128.png)</li>
+        <li>Save them in the <code>icons</code> folder in your extension directory</li>
+        <li>Reload the extension in Chrome</li>
+      </ol>
+    </div>
+    
+    <button onclick="generateAllIcons()">Generate All Icons</button>
+    
+    <div id="preview" class="preview"></div>
+    
+    <div id="downloadSection" style="display: none;">
+      <h3>Download Icons:</h3>
+      <p>Click each link to download. Make sure to save them in the <code>icons</code> folder!</p>
+      <div id="downloadLinks"></div>
+    </div>
+  </div>
+
+  <script>
+    function generateAllIcons() {
+      const sizes = [16, 48, 128];
+      const color = '#667eea';
+      const preview = document.getElementById('preview');
+      const downloadSection = document.getElementById('downloadSection');
+      const downloadLinks = document.getElementById('downloadLinks');
+      
+      preview.innerHTML = '<h3>Preview:</h3>';
+      downloadLinks.innerHTML = '';
+      downloadSection.style.display = 'block';
+      
+      sizes.forEach(size => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        
+        // Fill with color
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, size, size);
+        
+        // Add "F" letter
+        ctx.fillStyle = 'white';
+        ctx.font = `bold ${Math.floor(size * 0.6)}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('F', size / 2, size / 2);
+        
+        preview.appendChild(canvas);
+        
+        // Create download link
+        canvas.toBlob(blob => {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `icon${size}.png`;
+          link.textContent = `Download icon${size}.png (${size}x${size})`;
+          link.style.display = 'block';
+          link.style.margin = '10px 0';
+          link.style.padding = '10px';
+          link.style.background = '#28a745';
+          link.style.color = 'white';
+          link.style.textDecoration = 'none';
+          link.style.borderRadius = '4px';
+          link.style.textAlign = 'center';
+          downloadLinks.appendChild(link);
+        });
+      });
+    }
+    
+    // Auto-generate on load
+    window.onload = function() {
+      generateAllIcons();
+    };
+  </script>
+</body>
+</html>
+

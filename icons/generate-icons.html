@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Icon Generator - Friender Extension</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #667eea;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    input[type="color"] {
+      width: 100px;
+      height: 40px;
+      border: none;
+      cursor: pointer;
+    }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #5568d3;
+    }
+    canvas {
+      border: 1px solid #ddd;
+      margin: 10px 0;
+      display: block;
+    }
+    .download-links {
+      margin-top: 20px;
+    }
+    .download-links a {
+      display: inline-block;
+      margin-right: 10px;
+      padding: 8px 16px;
+      background: #28a745;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Friender Extension Icon Generator</h1>
+    <p>Generate simple placeholder icons for the Chrome extension.</p>
+    
+    <div class="form-group">
+      <label>Icon Color:</label>
+      <input type="color" id="iconColor" value="#667eea">
+    </div>
+    
+    <button onclick="generateIcons()">Generate Icons</button>
+    
+    <div id="preview"></div>
+    
+    <div class="download-links" id="downloadLinks" style="display: none;">
+      <h3>Download Icons:</h3>
+      <a id="download16" download="icon16.png">Download 16x16</a>
+      <a id="download48" download="icon48.png">Download 48x48</a>
+      <a id="download128" download="icon128.png">Download 128x128</a>
+    </div>
+  </div>
+
+  <script>
+    function generateIcons() {
+      const color = document.getElementById('iconColor').value;
+      const sizes = [16, 48, 128];
+      const preview = document.getElementById('preview');
+      const downloadLinks = document.getElementById('downloadLinks');
+      
+      preview.innerHTML = '<h3>Preview:</h3>';
+      downloadLinks.style.display = 'block';
+      
+      sizes.forEach(size => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        
+        // Fill with color
+        ctx.fillStyle = color;
+        ctx.fillRect(0, 0, size, size);
+        
+        // Add simple "F" letter
+        ctx.fillStyle = 'white';
+        ctx.font = `bold ${size * 0.6}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('F', size / 2, size / 2);
+        
+        preview.appendChild(canvas);
+        
+        // Create download link
+        canvas.toBlob(blob => {
+          const url = URL.createObjectURL(blob);
+          const link = document.getElementById(`download${size}`);
+          link.href = url;
+        });
+      });
+    }
+  </script>
+</body>
+</html>
+
