@@ -563,7 +563,6 @@ function setupEventListeners() {
     elements.useGenderFilter.addEventListener('change', (e) => {
       settings.useGenderFilter = e.target.checked;
       elements.genderOptions.style.display = e.target.checked ? 'flex' : 'none';
-
       if (e.target.checked) {
         elements.genderRadios.forEach(radio => radio.disabled = false);
       } else {
@@ -581,7 +580,8 @@ function setupEventListeners() {
     elements.useGenderFilterGroups.addEventListener('change', (e) => {
       settings.useGenderFilter = e.target.checked;
       elements.genderOptionsGroups.style.display = e.target.checked ? 'flex' : 'none';
-
+      const groupsPageEl = document.getElementById('groupsPage');
+      if (groupsPageEl) groupsPageEl.classList.toggle('gender-filter-on', e.target.checked);
       if (e.target.checked) {
         elements.genderRadiosGroups.forEach(radio => radio.disabled = false);
       } else {
@@ -789,8 +789,6 @@ function setupEventListeners() {
   // Setup tags input for keywords
   setupTagsInput('keywordsInput');
   setupTagsInput('negativeKeywordsInput');
-  setupTagsInput('keywordsInputSettings');
-  setupTagsInput('negativeKeywordsInputSettings');
 
   // Setup instruction page buttons
   setupInstructionPage();
@@ -1463,6 +1461,7 @@ async function detectPageContext() {
   }
 }
 
+
 // Show specific page
 function showPage(pageId) {
   console.log('Showing page:', pageId);
@@ -1470,6 +1469,29 @@ function showPage(pageId) {
     page.classList.remove('active');
   });
   const page = document.getElementById(pageId);
+  const container = document.querySelector('.friender-container');
+  if (pageId === 'instructionPage') {
+    if (container) {
+      container.classList.add('page-is-instruction');
+      container.classList.remove('page-is-settings');
+    }
+    document.body.classList.add('instruction-page-active');
+    document.body.classList.remove('settings-page-active');
+  } else if (pageId === 'settingsPage') {
+    if (container) {
+      container.classList.add('page-is-settings');
+      container.classList.remove('page-is-instruction');
+    }
+    document.body.classList.add('settings-page-active');
+    document.body.classList.remove('instruction-page-active');
+  } else {
+    if (container) {
+      container.classList.remove('page-is-instruction');
+      container.classList.remove('page-is-settings');
+    }
+    document.body.classList.remove('instruction-page-active');
+    document.body.classList.remove('settings-page-active');
+  }
   if (page) {
     page.classList.add('active');
     console.log('Page activated:', pageId);
@@ -1570,6 +1592,8 @@ function setupMenuItems() {
         console.log('Training clicked');
       } else if (text === 'Delete Pending Request') {
         handleDeletePendingRequests();
+      } else if (text === 'Clear All') {
+        handleClearAll();
       } else if (text === 'Change Password') {
         // Handle change password
         console.log('Change Password clicked');
@@ -1608,38 +1632,40 @@ async function startAutomation(pageType = 'settings') {
       if (groupsSettings.groupsSettings) {
         automationSettings = { ...automationSettings, ...groupsSettings.groupsSettings };
       }
-    }
 
-    // Get keywords from tags (Settings page: keywordsInputSettings; Groups page: keywordsInput)
-    const keywordsContainer = document.getElementById(pageType === 'settings' ? 'keywordsInputSettings' : 'keywordsInput');
-    const negativeKeywordsContainer = document.getElementById(pageType === 'settings' ? 'negativeKeywordsInputSettings' : 'negativeKeywordsInput');
-    if (keywordsContainer) {
-      const keywordTags = keywordsContainer.querySelectorAll('.tag');
-      automationSettings.keywords = Array.from(keywordTags).map(tag =>
-        tag.textContent.replace('×', '').trim()
-      ).filter(k => k);
+      // Get keywords from tags (groups page only)
+      const keywordsContainer = document.getElementById('keywordsInput');
+      const negativeKeywordsContainer = document.getElementById('negativeKeywordsInput');
+
+      if (keywordsContainer) {
+        const keywordTags = keywordsContainer.querySelectorAll('.tag');
+        automationSettings.keywords = Array.from(keywordTags).map(tag =>
+          tag.textContent.replace('×', '').trim()
+        ).filter(k => k);
+      }
+
+      if (negativeKeywordsContainer) {
+        const negativeTags = negativeKeywordsContainer.querySelectorAll('.tag');
+        automationSettings.negativeKeywords = Array.from(negativeTags).map(tag =>
+          tag.textContent.replace('×', '').trim()
+        ).filter(k => k);
+      }
     } else {
-      automationSettings.keywords = automationSettings.keywords || [];
-    }
-    if (negativeKeywordsContainer) {
-      const negativeTags = negativeKeywordsContainer.querySelectorAll('.tag');
-      automationSettings.negativeKeywords = Array.from(negativeTags).map(tag =>
-        tag.textContent.replace('×', '').trim()
-      ).filter(k => k);
-    } else {
-      automationSettings.negativeKeywords = automationSettings.negativeKeywords || [];
+      // Suggestion people page: no Keywords/Negative Keywords, no Resume/Last position – use only this page's fields
+      automationSettings.keywords = [];
+      automationSettings.negativeKeywords = [];
     }
 
     // Use ONLY the fields that exist on the current page (separate run per page)
     if (pageType === 'settings') {
-      // Suggestion people page fields (match layout: Resume, Last position, Keywords, Negative Keywords)
+      // Suggestion people page fields only (image 1) – no resume/last position on suggestions; do NOT overwrite stored group values
       automationSettings.lookupInterval = elements.lookupInterval?.value || 'auto';
       const settingsLimitBtn = document.querySelector('#settingsPage .toggle-btn.active');
       automationSettings.requestsLimit = settingsLimitBtn?.id === 'limitInfinite' ? 'infinite' : 'limited';
       automationSettings.numberOfRequests = parseInt(elements.numberOfRequests?.value) || 2;
-      const settingsResumeRadio = document.querySelector('#settingsPage input[name="resumeSearch"]:checked');
-      automationSettings.resumeFromLastSearch = settingsResumeRadio?.value || 'no';
-      automationSettings.lastSearchPosition = parseInt(elements.lastSearchPosition?.value, 10) || 0;
+      automationSettings.resumeFromLastSearch = 'no';
+      automationSettings.lastSearchPosition = 0;
+      // (lastSearchPosition/resumeFromLastSearch only apply to groups; keep above for this run so suggestions never resume)
 
       automationSettings.useGenderFilter = elements.useGenderFilter?.checked || false;
       const settingsGenderRadio = document.querySelector('#settingsPage input[name="gender"]:checked');
@@ -1683,8 +1709,10 @@ async function startAutomation(pageType = 'settings') {
     // Merge with existing settings so messaging (after_accept, decline, incoming) and segments/groups are not wiped
     const current = await chrome.storage.local.get(['settings']);
     const merged = { ...(current.settings || {}), ...automationSettings };
-    // Save merged settings (both pages can now use resume/lastPosition and keywords)
-    const toSave = merged;
+    // When running from suggestions, do not overwrite lastSearchPosition/resumeFromLastSearch in storage so groups "Your last search member's position" is preserved
+    const toSave = (pageType === 'settings' && current.settings)
+      ? { ...merged, lastSearchPosition: current.settings.lastSearchPosition, resumeFromLastSearch: current.settings.resumeFromLastSearch }
+      : merged;
     await chrome.storage.local.set({ settings: toSave });
 
     // Update state to running and reset session counter
@@ -1870,6 +1898,91 @@ function updateAutomationControls(status) {
 }
 
 /**
+ * Clear all extension data: storage, in-memory state, and reset UI.
+ * Shows confirmation dialog, then success message.
+ */
+async function handleClearAll() {
+  if (!confirm('Are you sure you want to clear all extension data? This cannot be undone.')) {
+    return;
+  }
+
+  try {
+    await chrome.storage.local.clear();
+
+    // Reset in-memory settings to defaults (including default segments/groups)
+    settings = {
+      lookupInterval: 'auto',
+      requestsLimit: 'limited',
+      numberOfRequests: 2,
+      resumeFromLastSearch: 'no',
+      lastSearchPosition: 0,
+      useGenderFilter: false,
+      gender: null,
+      useCountryFilter: false,
+      countryFilter: null,
+      mutualFriendsOperator: 'greater',
+      mutualFriendsCount: 1,
+      messageGroups: 'default',
+      keywords: [],
+      negativeKeywords: [],
+      segments: [{ id: 1, name: 'Default' }],
+      groups: [{ id: 1, name: 'Default' }],
+      editingId: null,
+      editingType: null,
+      currentGroupItems: [],
+      selectedTiers: [],
+      selectedCountries: [],
+      messaging: {
+        enabled: false,
+        sendOnIncomingRequest: false,
+        sendAfterAccept: false,
+        sendOnDecline: false,
+        incomingRequestGroup: 'default',
+        acceptGroup: 'default',
+        declineGroup: 'default'
+      }
+    };
+
+    // Persist default state so extension works after clear
+    await chrome.storage.local.set({
+      settings,
+      segments: settings.segments,
+      groups: settings.groups
+    });
+
+    // Tell background to stop automation
+    try {
+      await chrome.runtime.sendMessage({
+        type: 'UPDATE_STATE',
+        data: { status: 'stopped', userRequestedStop: true }
+      });
+    } catch (_) {}
+
+    updateUI();
+    renderSegments();
+    renderGroups();
+    populateDropdowns();
+    loadMessagingSettings();
+    updateAutomationControls('stopped');
+
+    showClearAllSuccess();
+  } catch (error) {
+    console.error('[Popup] Error clearing all data:', error);
+    alert('Failed to clear data. Please try again.');
+  }
+}
+
+function showClearAllSuccess() {
+  const toast = document.createElement('div');
+  toast.setAttribute('role', 'status');
+  toast.textContent = 'All data cleared successfully.';
+  toast.className = 'clear-all-toast';
+  toast.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #28a745; color: white; padding: 6px 12px; border-radius: 6px; z-index: 10000; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.12);';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+/**
  * Enhanced pending request deletion with better tab management
  * Uses background worker for improved reliability
  */
@@ -1904,7 +2017,7 @@ async function handleDeletePendingRequests() {
       // Show user feedback
       const toast = document.createElement('div');
       toast.textContent = 'Deleting pending requests...';
-      toast.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #4CAF50; color: white; padding: 10px 20px; border-radius: 4px; z-index: 10000;';
+      toast.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #4CAF50; color: white; padding: 6px 12px; border-radius: 6px; z-index: 10000; font-size: 12px;';
       document.body.appendChild(toast);
       
       setTimeout(() => {
@@ -2134,13 +2247,8 @@ async function resetAllSettings() {
   if (elements.useCountryFilter) elements.useCountryFilter.checked = false;
   if (elements.useCountryFilterGroups) elements.useCountryFilterGroups.checked = false;
 
-  // Clear tags inputs (Settings and Groups pages)
-  const tagInputs = [
-    elements.keywordsInput,
-    elements.negativeKeywordsInput,
-    document.getElementById('keywordsInputSettings'),
-    document.getElementById('negativeKeywordsInputSettings')
-  ].filter(Boolean);
+  // Clear tags inputs
+  const tagInputs = [elements.keywordsInput, elements.negativeKeywordsInput];
   tagInputs.forEach(container => {
     if (container) {
       const tags = container.querySelectorAll('.tag');

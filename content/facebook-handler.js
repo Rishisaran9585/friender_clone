@@ -44,17 +44,22 @@ class FacebookHandler {
         '[data-testid*="message"]'
       ],
 
-      // Message input selectors – Lexical editor first (Facebook chat: data-lexical-editor, aria-label="Message", aria-placeholder="Aa")
+      // Message input selectors – TEXT input only (never voice/record). Prefer role="textbox" and placeholder "Aa" so we never target the microphone/voice UI.
       messageInput: [
-        'div[data-lexical-editor="true"][aria-label="Message"]',
-        'div[contenteditable="true"][role="textbox"][aria-label="Message"]',
         'div[contenteditable="true"][role="textbox"][aria-placeholder="Aa"]',
+        'div[contenteditable="true"][role="textbox"][aria-label="Message"]',
         'div[contenteditable="true"][role="textbox"][aria-label*="Message"]',
+        'div[contenteditable="true"][role="textbox"][aria-label*="message"]',
         'div[contenteditable="true"][role="textbox"]',
+        'div[data-lexical-editor="true"][aria-label="Message"]',
+        'div[data-lexical-editor="true"][aria-placeholder="Aa"]',
+        'div[data-lexical-editor="true"][role="textbox"]',
         'div[contenteditable="true"][data-testid*="message"]',
-        'div[contenteditable="true"][aria-label*="message"]',
+        'div[contenteditable="true"][aria-label*="Aa"]',
+        'div[data-lexical-editor="true"]',
         'div[contenteditable="true"]',
         'textarea[placeholder*="Message"]',
+        'textarea[placeholder*="Aa"]',
         'textarea[placeholder*="message"]'
       ],
 
@@ -86,8 +91,17 @@ class FacebookHandler {
     };
   }
 
-  // Find element using multiple selector strategies
-  findElement(selectorArray, timeout = 5000) {
+  // Return true if element is inside a voice/record UI (microphone) – we must never type or click there; only send text from template.
+  isInsideVoiceOrRecordUI(el) {
+    if (!el || !el.closest) return false;
+    const label = (el.getAttribute?.('aria-label') || el.getAttribute?.('title') || '').toLowerCase();
+    if (/record|voice|microphone|audio message/.test(label)) return true;
+    const inVoice = el.closest('[aria-label*="Record"], [aria-label*="Voice"], [aria-label*="Microphone"], [aria-label*="record"], [aria-label*="voice"], [title*="voice"], [title*="record"]');
+    return !!inVoice;
+  }
+
+  // Find element using multiple selector strategies. Optional filter(el): if false, skip and try next selector.
+  findElement(selectorArray, timeout = 5000, filter = null) {
     return new Promise((resolve) => {
       const startTime = Date.now();
 
@@ -103,14 +117,14 @@ class FacebookHandler {
                   el.textContent?.includes(text) &&
                   (el.getAttribute('role') === 'button' || el.tagName === 'A' || el.tagName === 'SPAN')
                 );
-                if (found) {
+                if (found && (!filter || filter(found))) {
                   resolve(found);
                   return;
                 }
               }
             } else {
               const element = document.querySelector(selector);
-              if (element && this.isVisible(element)) {
+              if (element && this.isVisible(element) && (!filter || filter(element))) {
                 resolve(element);
                 return;
               }
@@ -146,9 +160,9 @@ class FacebookHandler {
     );
   }
 
-  // Wait for element to appear
-  async waitForElement(selectorArray, timeout = 10000) {
-    const element = await this.findElement(selectorArray, timeout);
+  // Wait for element to appear. Optional filter(el): if false, skip and try next selector.
+  async waitForElement(selectorArray, timeout = 10000, filter = null) {
+    const element = await this.findElement(selectorArray, timeout, filter);
     if (!element) {
       throw new Error(`Element not found: ${selectorArray[0]}`);
     }
@@ -346,18 +360,27 @@ class FacebookHandler {
       }
       console.log('[FacebookHandler] Message to send:', JSON.stringify(trimmedMessage));
 
-      // Helper: find message input in a root (document or shadowRoot)
+      // Helper: find TEXT message input in a root (never voice/record). Prefer role="textbox" and "Aa" placeholder.
       const findInputInRoot = (root) => {
         if (!root || !root.querySelector) return null;
-        return root.querySelector('div[data-lexical-editor="true"][aria-label="Message"]') ||
-          root.querySelector('div[contenteditable="true"][role="textbox"][aria-label="Message"]') ||
-          root.querySelector('div[contenteditable="true"][role="textbox"][aria-placeholder="Aa"]') ||
-          root.querySelector('div[contenteditable="true"][role="textbox"]') ||
-          root.querySelector('div[contenteditable="true"][aria-label*="Message"]') ||
-          root.querySelector('div[contenteditable="true"][aria-label*="Aa"]') ||
-          root.querySelector('div[contenteditable="true"]') ||
-          root.querySelector('textarea[placeholder*="Message"]') ||
-          root.querySelector('textarea[placeholder*="Aa"]');
+        const selectors = [
+          'div[contenteditable="true"][role="textbox"][aria-placeholder="Aa"]',
+          'div[contenteditable="true"][role="textbox"][aria-label="Message"]',
+          'div[contenteditable="true"][role="textbox"]',
+          'div[data-lexical-editor="true"][aria-label="Message"]',
+          'div[data-lexical-editor="true"][role="textbox"]',
+          'div[contenteditable="true"][aria-label*="Message"]',
+          'div[contenteditable="true"][aria-label*="Aa"]',
+          'div[data-lexical-editor="true"]',
+          'div[contenteditable="true"]',
+          'textarea[placeholder*="Message"]',
+          'textarea[placeholder*="Aa"]'
+        ];
+        for (const sel of selectors) {
+          const el = root.querySelector(sel);
+          if (el && !this.isInsideVoiceOrRecordUI(el)) return el;
+        }
+        return null;
       };
       const findInputInShadowRoots = (root) => {
         let el = findInputInRoot(root);
@@ -373,11 +396,13 @@ class FacebookHandler {
         return null;
       };
 
-      // Enhanced message input detection - try multiple methods
+      // Enhanced message input detection - try multiple methods. Only TEXT input (never voice/record UI).
+      const notVoiceUI = (el) => el && !this.isInsideVoiceOrRecordUI(el);
       let messageInput = null;
-      
+
       // Method 1: Try to find existing message input (if already in chat)
-      messageInput = await this.findElement(this.selectors.messageInput, 2000);
+      messageInput = await this.findElement(this.selectors.messageInput, 2000, notVoiceUI);
+      if (messageInput && this.isInsideVoiceOrRecordUI(messageInput)) messageInput = null;
 
       // Method 2: If not found, try to find and click Message button
       if (!messageInput) {
@@ -388,7 +413,7 @@ class FacebookHandler {
           await this.delay(500);
           this.simulateClick(messageButton);
           await this.delay(3000); // Wait for chat to open
-          messageInput = await this.waitForElement(this.selectors.messageInput, 5000);
+          messageInput = await this.waitForElement(this.selectors.messageInput, 5000, notVoiceUI);
         }
       }
 
@@ -396,30 +421,39 @@ class FacebookHandler {
       if (!messageInput) {
         const messengerOverlay = document.querySelector('[role="dialog"], [aria-label*="Messenger"], [data-testid*="messenger"], [role="complementary"]');
         if (messengerOverlay) {
-          messageInput = messengerOverlay.querySelector('div[contenteditable="true"][role="textbox"]') ||
-                        messengerOverlay.querySelector('div[contenteditable="true"][aria-label*="Message"]') ||
-                        messengerOverlay.querySelector('div[contenteditable="true"][aria-label*="Aa"]') ||
-                        messengerOverlay.querySelector('div[contenteditable="true"]');
+          const candidates = [
+            messengerOverlay.querySelector('div[contenteditable="true"][role="textbox"][aria-placeholder="Aa"]'),
+            messengerOverlay.querySelector('div[contenteditable="true"][role="textbox"]'),
+            messengerOverlay.querySelector('div[contenteditable="true"][aria-label*="Message"]'),
+            messengerOverlay.querySelector('div[contenteditable="true"][aria-label*="Aa"]'),
+            messengerOverlay.querySelector('div[contenteditable="true"]')
+          ];
+          messageInput = candidates.find(el => el && !this.isInsideVoiceOrRecordUI(el)) || null;
         }
       }
 
-      // Method 4: Broader selectors – include aria-label "Aa" (Facebook placeholder), Lexical editor
+      // Method 4: Broader selectors – TEXT input only (exclude voice UI)
       if (!messageInput) {
-        messageInput = document.querySelector('div[contenteditable="true"][role="textbox"]') ||
-                      document.querySelector('div[contenteditable="true"][aria-label*="Message"]') ||
-                      document.querySelector('div[contenteditable="true"][aria-label*="Aa"]') ||
-                      document.querySelector('div[data-lexical-editor="true"]') ||
-                      document.querySelector('div[contenteditable="true"][data-testid*="message"]') ||
-                      document.querySelector('div[contenteditable="true"]') ||
-                      document.querySelector('textarea[placeholder*="Message"]') ||
-                      document.querySelector('textarea[placeholder*="message"]') ||
-                      document.querySelector('textarea[placeholder*="Aa"]');
+        const docCandidates = [
+          document.querySelector('div[contenteditable="true"][role="textbox"][aria-placeholder="Aa"]'),
+          document.querySelector('div[contenteditable="true"][role="textbox"]'),
+          document.querySelector('div[contenteditable="true"][aria-label*="Message"]'),
+          document.querySelector('div[contenteditable="true"][aria-label*="Aa"]'),
+          document.querySelector('div[data-lexical-editor="true"][aria-label="Message"]'),
+          document.querySelector('div[data-lexical-editor="true"]'),
+          document.querySelector('div[contenteditable="true"][data-testid*="message"]'),
+          document.querySelector('div[contenteditable="true"]'),
+          document.querySelector('textarea[placeholder*="Message"]'),
+          document.querySelector('textarea[placeholder*="Aa"]')
+        ];
+        messageInput = docCandidates.find(el => el && !this.isInsideVoiceOrRecordUI(el)) || null;
       }
-      // Method 4b: Last resort – any contenteditable in a dialog (Facebook chat panel)
+      // Method 4b: Last resort – any contenteditable in a dialog, but not voice UI
       if (!messageInput) {
         const dialog = document.querySelector('[role="dialog"], [role="complementary"], [data-pagelet*="ChatTab"]');
         if (dialog) {
-          messageInput = dialog.querySelector('div[contenteditable="true"]') || dialog.querySelector('[contenteditable="true"]');
+          const dialogInput = dialog.querySelector('div[contenteditable="true"][role="textbox"]') || dialog.querySelector('div[contenteditable="true"]') || dialog.querySelector('[contenteditable="true"]');
+          if (dialogInput && !this.isInsideVoiceOrRecordUI(dialogInput)) messageInput = dialogInput;
         }
       }
 
@@ -508,6 +542,12 @@ class FacebookHandler {
         inputToUse = inner;
       }
 
+      // Never type into voice/record UI – only send text from the selected template
+      if (this.isInsideVoiceOrRecordUI(inputToUse)) {
+        console.error('[FacebookHandler] Message input is inside voice/record UI – refusing to type (would send voice). Only text from template is sent.');
+        throw new Error('Message input is voice UI – only text messages are sent');
+      }
+
       // If input is inside an iframe, focus the iframe first so the input can receive focus
       if (inputToUse.ownerDocument !== document) {
         try {
@@ -578,11 +618,9 @@ class FacebookHandler {
       if (afterTypeText === '' && trimmedMessage) {
         console.warn('[FacebookHandler] Input still empty after typing – trying send button anyway');
       } else if (afterTypeText === '') {
-        console.log('[FacebookHandler] Input empty after typing – treating as sent (no send button click)');
-        this._lastSentKey = sentKey;
-        this._lastSentTime = Date.now();
-        await chrome.storage.local.set({ lastMessageSentTo: { key: recipientKey, time: Date.now() } });
-        return true;
+        // No message was sent (empty template or typing failed) – do NOT return true so caller won't mark as "processed"
+        console.log('[FacebookHandler] Input empty after typing – no message was sent (will not mark as sent)');
+        return false;
       }
 
       // Find and click send button – ONLY the chat composer Send (never Share / "Send in Messenger")
@@ -1125,13 +1163,34 @@ class FacebookHandler {
     await this.dismissErrorModal();
     await this.delay(1000);
 
-    // Step 2: Find and click all "Cancel request" buttons
+    // Step 2: Find and click all "Cancel request" buttons – only inside Sent requests modal (ignore rest of page)
+    const sentRequestsModal = this.findSentRequestsModal();
+    const scopeRoot = sentRequestsModal || document.body;
+    if (sentRequestsModal) {
+      console.log('[FacebookHandler] Restricting cancel buttons to Sent requests modal only.');
+    }
+    // Cap by modal header "X sent requests" so counter never exceeds what the UI says (e.g. 3 not 6 or 7)
+    const headerCount = this.parseSentRequestsCountFromModal(scopeRoot);
+    const initialButtons = this.findCancelRequestButtons(scopeRoot);
+    const maxToClear = headerCount != null
+      ? Math.max(0, headerCount)
+      : Math.max(0, initialButtons.length);
+    console.log('[FacebookHandler] Max to clear (from header "' + (headerCount != null ? headerCount + ' sent requests"' : 'N/A') + ' or buttons):', maxToClear);
+
     let noMoreFoundCount = 0;
     let retryCount = 0;
     const maxRetries = 20;
 
     while (noMoreFoundCount < 3 && retryCount < maxRetries) {
-      // Find "Cancel request" buttons (sent requests)
+      if (this.findCancelRequestButtons(scopeRoot).length === 0) {
+        console.log('[FacebookHandler] ✅ No more cancel buttons – stopping.');
+        break;
+      }
+      if (processedCount >= maxToClear) {
+        console.log('[FacebookHandler] Reached cap of', maxToClear, '– stopping.');
+        break;
+      }
+      // Find "Cancel request" buttons only inside modal (scopeRoot)
       const cancelRequestSelectors = [
         'div[aria-label^="Cancel Request"]',
         'div[aria-label^="Cancel request"]',
@@ -1142,32 +1201,34 @@ class FacebookHandler {
       ];
 
       let cancelButtons = [];
+      const queryAll = (sel) => Array.from(scopeRoot.querySelectorAll(sel));
       for (const selector of cancelRequestSelectors) {
         try {
-          const buttons = Array.from(document.querySelectorAll(selector));
-          cancelButtons = cancelButtons.concat(buttons);
+          cancelButtons = cancelButtons.concat(queryAll(selector));
         } catch (e) {
           // Some selectors might not be valid, skip
         }
       }
 
-      // Also try finding by text content
-      const allButtons = Array.from(document.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
+      const allButtons = queryAll('div[role="button"], span[role="button"], a[role="button"]');
       const textCancelButtons = allButtons.filter(btn => {
         const text = (btn.textContent || '').toLowerCase();
         const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
-        return (text.includes('cancel request') || ariaLabel.includes('cancel request')) && 
-               !text.includes('view sent') && 
+        const isCancelRequest = (text.includes('cancel request') || ariaLabel.includes('cancel request')) &&
+               !text.includes('request cancelled') && !text.includes('request canceled') &&
+               !text.includes('view sent') &&
                !text.includes('sent requests');
+        return isCancelRequest;
       });
 
       cancelButtons = cancelButtons.concat(textCancelButtons);
-
-      // Remove duplicates
       cancelButtons = [...new Set(cancelButtons)];
-
-      // Filter visible buttons
-      const activeButtons = cancelButtons.filter(btn => this.isVisible(btn));
+      // Only actionable Cancel request buttons (exclude cards that already show "Request cancelled")
+      const actionable = cancelButtons.filter(btn =>
+        this.isVisible(btn) && !this.isButtonInCancelledCard(btn)
+      );
+      // One button per card: same card can have multiple elements (aria-label div + inner span, etc.) – count and click only one per request
+      const activeButtons = this.deduplicateCancelButtonsByCard(actionable);
 
       if (activeButtons.length === 0) {
         retryCount++;
@@ -1177,20 +1238,21 @@ class FacebookHandler {
         window.scrollTo(0, document.body.scrollHeight);
         await this.delay(2000);
 
-        // Check again after scroll
-        const checkButtons = Array.from(document.querySelectorAll('div[role="button"], span[role="button"]'))
+        // Check again after scroll (only inside modal)
+        const checkButtonsRaw = queryAll('div[role="button"], span[role="button"]')
           .filter(btn => {
             const text = (btn.textContent || '').toLowerCase();
             const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
-            return (text.includes('cancel request') || ariaLabel.includes('cancel request')) && 
-                   this.isVisible(btn);
+            const isCancelRequest = (text.includes('cancel request') || ariaLabel.includes('cancel request')) &&
+                   !text.includes('request cancelled') && !text.includes('request canceled');
+            return isCancelRequest && this.isVisible(btn) && !this.isButtonInCancelledCard(btn);
           });
+        const checkButtons = this.deduplicateCancelButtonsByCard(checkButtonsRaw);
 
         if (checkButtons.length === 0) {
           noMoreFoundCount++;
           if (noMoreFoundCount >= 3) {
-            // Check one more time if all requests are cleared
-            const finalCheck = this.findCancelRequestButtons();
+            const finalCheck = this.findCancelRequestButtons(scopeRoot);
             if (finalCheck.length === 0) {
               console.log('[FacebookHandler] ✅ All requests cleared! No more cancel buttons found.');
               break;
@@ -1201,24 +1263,25 @@ class FacebookHandler {
         continue;
       }
       
-      // After processing buttons, check if all are cleared
-      let remainingAfterProcess = this.findCancelRequestButtons();
+      let remainingAfterProcess = this.findCancelRequestButtons(scopeRoot);
       if (remainingAfterProcess.length === 0) {
         console.log('[FacebookHandler] ✅ All requests have been cleared!');
         break;
       }
 
-      // Reset counters when buttons found
       noMoreFoundCount = 0;
       retryCount = 0;
 
-      // Click all cancel buttons
+      // Click all cancel buttons – only increment counter when we actually click (one per row); stop at cap
       for (const btn of activeButtons) {
+        if (processedCount >= maxToClear) break;
         try {
-          // Check for and dismiss any error modals before clicking
           await this.dismissErrorModal();
           
           console.log('Clicked \'Cancel request\' button');
+          // Mark request row so we never click/count this one again (avoids double-count when DOM lags)
+          const row = this.getRequestRowForCancelButton(btn);
+          if (row && row.setAttribute) row.setAttribute('data-friender-cancel-clicked', '1');
           this.simulateClick(btn);
           
           // Wait a bit for Facebook to process
@@ -1232,13 +1295,11 @@ class FacebookHandler {
             await this.delay(3000);
           }
           
-          processedCount++;
-          pendingRequestCount++;
-          
-          // Update centered counter display
+          // Only increment when we actually performed a click; never exceed initial request count (4 IDs → max 4)
+          const nextCount = Math.min(processedCount + 1, maxToClear);
+          processedCount = nextCount;
+          pendingRequestCount = nextCount;
           this.updateCenteredCounter(pendingRequestCount);
-          
-          // Update count in storage (like original tool)
           chrome.storage.local.set({ pendingRequestCount: pendingRequestCount }, () => {
             console.log(`Updated pending request count: ${pendingRequestCount}`);
           });
@@ -1255,8 +1316,7 @@ class FacebookHandler {
         }
       }
 
-      // After processing buttons, check if all are cleared
-      remainingAfterProcess = this.findCancelRequestButtons();
+      remainingAfterProcess = this.findCancelRequestButtons(scopeRoot);
       if (remainingAfterProcess.length === 0) {
         console.log('[FacebookHandler] ✅ All requests have been cleared!');
         break;
@@ -1267,17 +1327,15 @@ class FacebookHandler {
       await this.delay(1000);
     }
 
-    console.log(`[FacebookHandler] Finished. Processed ${processedCount} requests.`);
+    // Final count capped at initial request rows – never show more than actual IDs (e.g. 4 not 12)
+    const finalCount = Math.min(processedCount, maxToClear);
+    console.log(`[FacebookHandler] Finished. Cleared ${finalCount} requests (cap was ${maxToClear}).`);
     
-    // Check if all requests are cleared
-    const remainingButtons = this.findCancelRequestButtons();
+    const remainingButtons = this.findCancelRequestButtons(scopeRoot);
     if (remainingButtons.length === 0) {
       console.log('[FacebookHandler] ✅ All requests have been cleared!');
-      
-      // Update counter to show completion
-      this.updateCenteredCounter(pendingRequestCount, true);
-      
-      // Wait a moment to show final count
+      this.updateCenteredCounter(finalCount, true);
+      chrome.storage.local.set({ pendingRequestCount: finalCount }, () => {});
       await this.delay(2000);
       
       // Remove counter overlay
@@ -1294,11 +1352,51 @@ class FacebookHandler {
       console.log('[FacebookHandler] 🎉 Deletion complete! All sent requests have been cancelled.');
     }
     
-    return processedCount;
+    return finalCount;
   }
   
-  // Find all cancel request buttons (helper method)
-  findCancelRequestButtons() {
+  // Get the request row container for a cancel button (ancestor that contains "Cancel request" / "Request cancelled" – one per sent-request row).
+  getRequestRowForCancelButton(btn) {
+    if (!btn || !btn.closest) return null;
+    let el = btn;
+    for (let i = 0; i < 20 && el; i++) {
+      el = el.parentElement;
+      if (!el) break;
+      const t = (el.textContent || '').toLowerCase();
+      if (t.includes('cancel request') || t.includes('request cancelled') || t.includes('request canceled')) return el;
+    }
+    return btn.closest('[role="article"], [data-pagelet], div[class*="x1q0q8m5"], div[class*="x6s0dn4"]') || btn.parentElement;
+  }
+
+  // One button per request row (same row has multiple DOM elements) – return one button per unique row so count = actual IDs.
+  deduplicateCancelButtonsByCard(buttons) {
+    if (!buttons || buttons.length === 0) return [];
+    const seenRows = new Set();
+    const out = [];
+    for (const btn of buttons) {
+      const row = this.getRequestRowForCancelButton(btn);
+      if (!row || seenRows.has(row)) continue;
+      seenRows.add(row);
+      out.push(btn);
+    }
+    return out;
+  }
+
+  // Return true if this button is in a row that already shows "Request cancelled" or we already clicked it (don't click again).
+  isButtonInCancelledCard(btn) {
+    if (!btn || !btn.closest) return false;
+    const row = this.getRequestRowForCancelButton(btn);
+    if (!row) return false;
+    if (row.getAttribute?.('data-friender-cancel-clicked') === '1') return true;
+    const rowText = (row.textContent || '').toLowerCase();
+    return rowText.includes('request cancelled') || rowText.includes('request canceled');
+  }
+
+  // Find only actionable "Cancel request" buttons. If scopeRoot is provided (e.g. Sent requests modal), search only inside it so count = actual IDs in modal.
+  findCancelRequestButtons(scopeRoot = null) {
+    const root = scopeRoot && scopeRoot.querySelectorAll ? scopeRoot : document;
+    const queryAll = (sel) => Array.from(root.querySelectorAll(sel));
+
     const cancelRequestSelectors = [
       'div[aria-label^="Cancel Request"]',
       'div[aria-label^="Cancel request"]',
@@ -1309,31 +1407,27 @@ class FacebookHandler {
     let cancelButtons = [];
     for (const selector of cancelRequestSelectors) {
       try {
-        const buttons = Array.from(document.querySelectorAll(selector));
-        cancelButtons = cancelButtons.concat(buttons);
+        cancelButtons = cancelButtons.concat(queryAll(selector));
       } catch (e) {
         // Some selectors might not be valid, skip
       }
     }
 
-    // Also try finding by text content
-    const allButtons = Array.from(document.querySelectorAll('div[role="button"], span[role="button"], a[role="button"]'));
+    const allButtons = queryAll('div[role="button"], span[role="button"], a[role="button"]');
     const textCancelButtons = allButtons.filter(btn => {
       const text = (btn.textContent || '').toLowerCase();
       const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
-      return (text.includes('cancel request') || ariaLabel.includes('cancel request')) && 
-             !text.includes('view sent') && 
-             !text.includes('sent requests') &&
-             this.isVisible(btn);
+      const isCancelRequest = (text.includes('cancel request') || ariaLabel.includes('cancel request')) &&
+             !text.includes('request cancelled') && !text.includes('request canceled') &&
+             !text.includes('view sent') &&
+             !text.includes('sent requests');
+      return isCancelRequest && this.isVisible(btn);
     });
 
     cancelButtons = cancelButtons.concat(textCancelButtons);
-    
-    // Remove duplicates
     cancelButtons = [...new Set(cancelButtons)];
-    
-    // Filter visible buttons
-    return cancelButtons.filter(btn => this.isVisible(btn));
+    const actionable = cancelButtons.filter(btn => this.isVisible(btn) && !this.isButtonInCancelledCard(btn));
+    return this.deduplicateCancelButtonsByCard(actionable);
   }
   
   // Close sent requests modal
@@ -1426,6 +1520,18 @@ class FacebookHandler {
     }
   }
   
+  // Parse "X sent requests" from modal text so we cap counter at the number the UI shows (e.g. 3).
+  parseSentRequestsCountFromModal(scopeRoot) {
+    const root = scopeRoot && scopeRoot.querySelectorAll ? scopeRoot : document.body;
+    const text = (root.textContent || '').trim();
+    const match = text.match(/(\d+)\s*sent\s*requests?/i);
+    if (match) {
+      const n = parseInt(match[1], 10);
+      if (!isNaN(n) && n >= 0) return n;
+    }
+    return null;
+  }
+
   // Find "Sent requests" modal
   findSentRequestsModal() {
     // Try multiple selectors for the modal

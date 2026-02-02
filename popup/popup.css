@@ -16,54 +16,67 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  width: 820px;
-  max-height: 680px;
-  min-height: 500px;
-  height: 680px;
-  background: linear-gradient(165deg, #dce8f7 0%, #e3f2fd 35%, #e8ecff 70%, #eef5ff 100%);
+  width: 700px;
+  max-height: 720px;
+  min-height: 480px;
+  height: 720px;
+  background: linear-gradient(160deg, #e8ecff 0%, #e3f2fd 50%, #f0f4ff 100%);
   color: #333;
   scrollbar-width: none;
   -ms-overflow-style: none;
   overflow: hidden;
-  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
-/* Subtle cloud-like shapes behind content (match 2nd image) */
-body::before,
-body::after {
-  content: '';
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.6);
-  pointer-events: none;
-  z-index: 0;
+/* Settings page active: popup shrinks to content so no space under footer */
+body.settings-page-active {
+  height: auto;
+  min-height: 480px;
+  max-height: 720px;
 }
-body::before {
-  width: 280px;
-  height: 160px;
-  top: 10%;
-  right: 5%;
-  filter: blur(40px);
+
+/* Groups page with gender filter on: increase height so Run/Pause/Stop aren't cut off */
+body.groups-filter-on {
+  height: 760px !important;
+  max-height: 760px !important;
 }
-body::after {
-  width: 200px;
-  height: 120px;
-  bottom: 15%;
-  left: 8%;
-  filter: blur(35px);
-}
+
 body::-webkit-scrollbar {
   display: none;
 }
 
 .friender-container {
-  position: relative;
-  z-index: 1;
+  flex: 1;
   min-height: 0;
-  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Instruction page: popup sizes to content – no gap, no scrollbar */
+body.instruction-page-active {
+  height: auto;
+  min-height: 480px;
+  max-height: 90vh;
+}
+.friender-container.page-is-instruction {
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+.friender-container.page-is-instruction #instructionPage {
+  flex: 0 0 auto;
+  overflow: visible;
+  min-height: 0;
+}
+/* Instruction card: don't grow – no space below Quick Navigation */
+.friender-container.page-is-instruction #instructionPage .content-card {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+}
+.friender-container.page-is-instruction .friender-footer.footer {
+  margin-top: 0 !important;
+  flex-shrink: 0;
 }
 
 /* Bootstrap overrides for Friender brand */
@@ -104,21 +117,40 @@ body::-webkit-scrollbar {
   background: transparent;
 }
 
-/* Pages - take remaining space, scroll inside card so footer stays visible */
+/* Pages - scrollable with visible scrollbar */
 .page {
   display: none;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
-  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: auto;
+  scrollbar-color: #a0aec0 #e2e8f0;
 }
 
 .page::-webkit-scrollbar {
-  display: none;
+  width: 10px;
+}
+
+.page::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 6px;
+  margin: 4px 0;
+}
+
+.page::-webkit-scrollbar-thumb {
+  background: #a0aec0;
+  border-radius: 6px;
+  border: 3px solid #e2e8f0;
+}
+
+.page::-webkit-scrollbar-thumb:hover {
+  background: #718096;
 }
 
 .page.active {
   display: flex;
+  flex-direction: column;
 }
 
 /* Header */
@@ -185,13 +217,16 @@ body::-webkit-scrollbar {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border-radius: 4px;
-  transition: background 0.2s;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
   font-size: 16px;
+  position: relative;
+  z-index: 1;
 }
 
 .icon-btn:hover {
-  background: #f5f5f5;
+  background: #e2e8f0;
+  color: var(--friender-primary);
 }
 
 /* Dropdown Menu */
@@ -253,7 +288,8 @@ body::-webkit-scrollbar {
 }
 
 .menu-item:hover {
-  background: #f5f5f5;
+  background: #e8ecff;
+  color: #333;
 }
 
 .menu-icon {
@@ -290,10 +326,10 @@ body::-webkit-scrollbar {
   color: #dc3545;
 }
 
-/* Content Card - scroll inside so footer and buttons are never cut off */
+/* Content Card */
 .content-card {
   flex: 1;
-  margin: 0.5rem;
+  margin: 0.35rem;
   background: white;
   border-radius: var(--friender-radius-lg);
   box-shadow: var(--friender-shadow);
@@ -303,16 +339,156 @@ body::-webkit-scrollbar {
   min-height: 0;
 }
 
-/* Settings/Groups pages: exact layout like 2nd image – no scroll, generous padding */
-#settingsPage .content-card,
-#groupsPage .content-card {
-  overflow: hidden;
-  margin: 24px;
+/* Settings page: card sizes to content so no big white gap below Run/Pause/Stop */
+#settingsPage .content-card {
+  flex: 0 0 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* When settings page is active: popup sizes to content – no gap between card and footer */
+body.settings-page-active {
+  height: auto;
+  min-height: 480px;
+  max-height: 90vh;
+}
+.friender-container.page-is-settings {
+  flex: 0 0 auto;
+}
+.friender-container.page-is-settings #settingsPage {
+  flex: 0 0 auto !important;
+}
+.friender-container.page-is-settings #settingsPage .content-card {
+  margin-bottom: 0;
+}
+.friender-container.page-is-settings .friender-footer.footer {
+  margin-top: 0 !important;
+}
+
+#settingsPage .settings-form.two-column {
+  max-width: 100%;
+  min-width: 0;
+}
+
+#settingsPage .content-card .card-body.settings-page-body {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
+  padding: 12px 20px 8px 14px;
+  scrollbar-width: auto;
+  scrollbar-color: #a0aec0 #e2e8f0;
+  box-sizing: border-box;
+  justify-content: flex-start;
+}
+
+#settingsPage .content-card .card-body.settings-page-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+#settingsPage .content-card .card-body.settings-page-body::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 5px;
+}
+
+#settingsPage .content-card .card-body.settings-page-body::-webkit-scrollbar-thumb {
+  background: #a0aec0;
+  border-radius: 5px;
+}
+
+#settingsPage .content-card .card-body.settings-page-body::-webkit-scrollbar-thumb:hover {
+  background: #718096;
+}
+
+/* Groups page: scrollable card body so Run/Pause/Stop aren't cut off when gender filter is on */
+#groupsPage .content-card {
+  flex: 1;
   min-height: 0;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+#groupsPage .content-card .card-body.groups-page-body {
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 20px 20px 14px;
+  scrollbar-width: auto;
+  scrollbar-color: #a0aec0 #e2e8f0;
+  box-sizing: border-box;
+}
+
+#groupsPage .content-card .card-body.groups-page-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+#groupsPage .content-card .card-body.groups-page-body::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 5px;
+}
+
+#groupsPage .content-card .card-body.groups-page-body::-webkit-scrollbar-thumb {
+  background: #a0aec0;
+  border-radius: 5px;
+}
+
+#groupsPage .content-card .card-body.groups-page-body::-webkit-scrollbar-thumb:hover {
+  background: #718096;
+}
+
+/* Tighter Run/Pause/Stop section – keep buttons fully visible (no cut-off) */
+#settingsPage .card-body .text-center.border-top {
+  margin-top: 10px;
+  padding-top: 10px;
+  padding-left: 8px;
+  padding-right: 8px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+#settingsPage .automation-controls {
+  margin-top: 8px !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Responsive: compact when gender filter is OFF, normal space when ON */
+#settingsPage .form-group:has(#genderOptions) {
+  margin-bottom: 4px;
+}
+#settingsPage.gender-filter-on .form-group:has(#genderOptions) {
+  margin-bottom: 10px;
+}
+#settingsPage:not(.gender-filter-on) .card-body .text-center.border-top {
+  margin-top: 6px;
+  padding-top: 8px;
+}
+#settingsPage.gender-filter-on .card-body .text-center.border-top {
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+/* Groups page: same responsive spacing for gender filter */
+#groupsPage .form-group:has(#genderOptionsGroups) {
+  margin-bottom: 4px;
+}
+#groupsPage.gender-filter-on .form-group:has(#genderOptionsGroups) {
+  margin-bottom: 10px;
+}
+#groupsPage:not(.gender-filter-on) .card-body .text-center.border-top {
+  margin-top: 6px;
+  padding-top: 8px;
+}
+#groupsPage.gender-filter-on .card-body .text-center.border-top {
+  margin-top: 10px;
+  padding-top: 10px;
 }
 
 /* Tabs */
@@ -358,18 +534,37 @@ body::-webkit-scrollbar {
   color: var(--friender-primary);
 }
 
-/* Tab Content - no scroll, fit to popup */
+/* Tab Content - scrollable with visible scrollbar */
 .tab-content {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px;
   display: flex;
   flex-direction: column;
+  scrollbar-width: auto;
+  scrollbar-color: #a0aec0 #e2e8f0;
 }
 
 .tab-content::-webkit-scrollbar {
-  display: none;
+  width: 10px;
+}
+
+.tab-content::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 6px;
+  margin: 4px 0;
+}
+
+.tab-content::-webkit-scrollbar-thumb {
+  background: #a0aec0;
+  border-radius: 6px;
+  border: 3px solid #e2e8f0;
+}
+
+.tab-content::-webkit-scrollbar-thumb:hover {
+  background: #718096;
 }
 
 .tab-pane {
@@ -384,10 +579,12 @@ body::-webkit-scrollbar {
   display: flex;
 }
 
-/* Settings tab (Messaging) - fit without scroll */
+/* Settings tab (Messaging) - size to content so no big space under Save Settings */
 #homeSettingsTab {
+  flex: 0 0 auto;
   flex-direction: column;
   min-height: 0;
+  align-self: flex-start;
 }
 
 #homeSettingsTab .info-banner {
@@ -426,7 +623,7 @@ body::-webkit-scrollbar {
   background: #5568d3;
 }
 
-/* Items List */
+/* Items List - scrollable with visible scrollbar */
 .items-list {
   display: flex;
   flex-direction: column;
@@ -434,12 +631,28 @@ body::-webkit-scrollbar {
   min-height: 0;
   overflow-y: auto;
   flex: 1;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: auto;
+  scrollbar-color: #a0aec0 #e2e8f0;
 }
 
 .items-list::-webkit-scrollbar {
-  display: none;
+  width: 10px;
+}
+
+.items-list::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 6px;
+  margin: 4px 0;
+}
+
+.items-list::-webkit-scrollbar-thumb {
+  background: #a0aec0;
+  border-radius: 6px;
+  border: 3px solid #e2e8f0;
+}
+
+.items-list::-webkit-scrollbar-thumb:hover {
+  background: #718096;
 }
 
 .list-item {
@@ -521,11 +734,10 @@ body::-webkit-scrollbar {
   padding: 0;
 }
 
-/* Two columns with significant horizontal spacing – exact like 2nd image */
 .settings-form.two-column {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px 28px;
+  gap: 12px 16px;
   align-items: start;
   margin-left: 0;
   margin-right: 0;
@@ -548,21 +760,8 @@ body::-webkit-scrollbar {
 }
 
 .settings-form .form-label {
-  margin-bottom: 6px;
+  margin-bottom: 12px;
   line-height: 1.3;
-  font-size: 13px;
-  color: #333;
-}
-
-.settings-form .form-label.label-with-icons {
-  display: inline-flex;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.settings-form .form-label.label-with-icons .bi {
-  font-size: 12px;
-  color: var(--friender-primary);
 }
 
 .settings-form .form-group .form-check {
@@ -597,13 +796,13 @@ body::-webkit-scrollbar {
   margin-bottom: 0;
 }
 
-/* Filter Box – slightly lighter grey area (Tier Level / Country Level) – exact like 2nd image */
+/* Filter Box – clear space below toggle row */
 .filter-box {
-  margin-top: 6px;
-  padding: 8px 12px;
-  background: #f0f2f5;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: #f8f9fa;
   border-radius: 8px;
-  border: 1px solid #e4e6eb;
+  border: 1px solid #e9ecef;
   width: 100%;
   box-sizing: border-box;
 }
@@ -635,23 +834,6 @@ body::-webkit-scrollbar {
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
-}
-
-/* Settings/Groups: larger Keywords/Negative Keywords boxes like reference image */
-#settingsPage .tags-input,
-#groupsPage .tags-input {
-  min-height: 44px;
-  padding: 12px 14px;
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-#settingsPage .tags-input-field,
-#groupsPage .tags-input-field {
-  min-width: 120px;
-  font-size: 14px;
 }
 
 .tags-input.form-control {
@@ -708,7 +890,7 @@ body::-webkit-scrollbar {
 
 /* Instruction Page */
 .instruction-content {
-  padding: 40px;
+  padding: 40px 40px 0.5rem 40px;
   text-align: center;
 }
 
@@ -810,8 +992,10 @@ body::-webkit-scrollbar {
 }
 
 .quick-actions {
-  margin-top: 40px;
-  padding-top: 30px;
+  margin-top: 24px;
+  margin-bottom: 0;
+  padding-top: 20px;
+  padding-bottom: 0;
   border-top: 2px solid #e0e0e0;
 }
 
@@ -819,7 +1003,7 @@ body::-webkit-scrollbar {
   font-size: 18px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .action-buttons {
@@ -827,6 +1011,7 @@ body::-webkit-scrollbar {
   gap: 15px;
   justify-content: center;
   flex-wrap: wrap;
+  margin-bottom: 0;
 }
 
 .action-btn-primary {
@@ -994,7 +1179,7 @@ body::-webkit-scrollbar {
 
 .save-settings-container {
   text-align: center;
-  margin: 10px 0 6px;
+  margin: 8px 0 4px;
   flex-shrink: 0;
 }
 
@@ -1043,24 +1228,6 @@ body::-webkit-scrollbar {
   font-size: 14px;
   font-family: inherit;
   background: white;
-}
-
-/* Settings/Groups: larger text boxes and dropdowns like reference image */
-#settingsPage .form-control,
-#settingsPage .form-select,
-#groupsPage .form-control,
-#groupsPage .form-select {
-  width: 100%;
-  min-height: 44px;
-  padding: 12px 14px;
-  font-size: 14px;
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
-}
-
-#settingsPage .form-select,
-#groupsPage .form-select {
-  cursor: pointer;
 }
 
 .form-control:focus {
@@ -1219,43 +1386,15 @@ input.toggle-switch.form-check-input:checked::before {
   width: 100px;
 }
 
-/* Run / Pause / Stop section – consistent spacing like 2nd image */
-.run-buttons-section {
-  margin-bottom: 0;
-  flex-shrink: 0;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #e9ecef;
-}
-
-/* Generous padding inside white card (top, bottom, left, right) – exact like 2nd image */
-#settingsPage .settings-page-body,
-#groupsPage .groups-page-body {
-  padding: 28px 32px 24px;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-#settingsPage .settings-page-body .settings-form.two-column,
-#groupsPage .groups-page-body .settings-form.two-column {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  align-content: start;
-}
-
 /* Run Button */
 .btn-run {
   width: 100%;
-  padding: 10px 20px;
+  padding: 14px 24px;
   background: #667eea;
   color: white;
   border: none;
   border-radius: 6px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -1280,18 +1419,18 @@ input.toggle-switch.form-check-input:checked::before {
 /* Automation Controls */
 .automation-controls {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   justify-content: center;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 .btn-control {
-  padding: 6px 14px;
+  padding: 8px 16px;
   border: 1px solid #ddd;
   border-radius: 6px;
   background: white;
   color: #666;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -1307,49 +1446,93 @@ input.toggle-switch.form-check-input:checked::before {
   transform: scale(0.98);
 }
 
-/* Footer (all pages) - always visible at bottom, never cut off */
+/* Footer (all pages) - redesigned */
 .friender-footer.footer {
   flex-shrink: 0;
-  padding: 10px 16px;
-  background: white;
-  border-top: 1px solid #e0e0e0;
   margin-top: auto;
-  min-height: 40px;
-  width: 100%;
-  box-sizing: border-box;
+  padding: 0;
+  background: linear-gradient(180deg, #f8f9fc 0%, #eef1f8 100%);
+  border-top: 2px solid rgba(102, 126, 234, 0.2);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
 }
 
-.friender-footer .footer-content {
+.footer-inner {
   display: flex;
+  align-items: center;
   justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  flex-wrap: wrap;
+}
+
+.footer-brand {
+  display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
-  min-width: 0;
 }
 
-.friender-footer .footer-left {
+.footer-brand-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--friender-primary) 0%, var(--friender-primary-dark) 100%);
+  color: white;
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
-  flex-shrink: 1;
-}
-
-.friender-footer .footer-right {
-  flex-shrink: 0;
+  justify-content: center;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.35);
 }
 
 .footer-company {
-  font-weight: 600;
-  color: #333;
-  white-space: nowrap;
+  font-weight: 700;
+  font-size: 14px;
+  color: #2d3748;
+  letter-spacing: 0.02em;
 }
 
-.footer-version {
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-link.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--friender-primary);
+  background: rgba(102, 126, 234, 0.1);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.footer-link.pill:hover {
+  background: rgba(102, 126, 234, 0.18);
+  color: var(--friender-primary-dark);
+  border-color: rgba(102, 126, 234, 0.35);
+  transform: translateY(-1px);
+}
+
+.footer-meta {
+  display: flex;
+  align-items: center;
+}
+
+.footer-version-badge {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 20px;
   font-size: 11px;
-  color: #888;
-  white-space: nowrap;
+  font-weight: 600;
+  color: #64748b;
+  background: white;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .affiliate-link-container {
@@ -1378,16 +1561,16 @@ input.toggle-switch.form-check-input:checked::before {
 .footer-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 15px;
 }
 
 .footer-right {
   text-align: right;
-  flex-shrink: 0;
+  max-width: 50%;
 }
 
 .footer-link {
-  color: #667eea;
+  color: var(--friender-primary);
   text-decoration: none;
 }
 
@@ -1418,15 +1601,7 @@ input.toggle-switch.form-check-input:checked::before {
   background: #5568d3;
 }
 
-/* Scrollbar hidden */
-* {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-*::-webkit-scrollbar {
-  display: none;
-}
+/* Visible scrollbar for main scroll areas (tab-content, page, items-list defined above) */
 
 /* Page Header with Back Button */
 .page-header-with-back {
@@ -2084,30 +2259,45 @@ input.toggle-switch.form-check-input:checked::before {
 .account-actions {
   display: flex;
   gap: 15px;
+  position: relative;
+  z-index: 1;
 }
 
 .btn-outline-action {
   flex: 1;
-  padding: 12px;
+  padding: 10px 14px;
   background: white;
-  border: 1px solid #ddd;
+  border: 1px solid #dee2e6;
   border-radius: 6px;
-  color: #555;
+  color: #495057;
   font-weight: 500;
+  font-size: 0.9rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
+  position: relative;
+  z-index: 1;
 }
 
 .btn-outline-action:hover {
-  background: #f8f9fa;
-  border-color: #ccc;
+  background: #e9ecef;
+  border-color: #adb5bd;
+  color: #212529;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.btn-outline-action:focus-visible {
+  outline: 2px solid var(--friender-primary);
+  outline-offset: 2px;
 }
 
 .btn-outline-action.danger {
-  color: #d32f2f;
+  color: #c62828;
+  border-color: #ef9a9a;
 }
 
 .btn-outline-action.danger:hover {
-  background: #fff8f8;
-  border-color: #ffcdd2;
+  background: #ffebee;
+  border-color: #e57373;
+  color: #b71c1c;
+  box-shadow: 0 1px 4px rgba(198, 40, 40, 0.15);
 }

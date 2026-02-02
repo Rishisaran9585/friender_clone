@@ -134,8 +134,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: false, error: 'userId required' });
       return true;
     }
-    const url = `https://www.facebook.com/messages/t/${userId}`;
-    chrome.storage.local.set({
+    // If automation was stopped (e.g. user started "Delete pending"), do not open new tabs
+    getState().then(({ state }) => {
+      if (state?.status === 'stopped') {
+        try { sendResponse({ success: true }); } catch (_) {}
+        return;
+      }
+      const url = `https://www.facebook.com/messages/t/${userId}`;
+      chrome.storage.local.set({
       pendingAutoMessage: {
         userId: String(userId),
         profileName: profileName || 'Friend',
@@ -167,6 +173,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error('[Worker] Error in OPEN_MESSENGER_AND_SEND_WAIT:', error);
         sendResponse({ success: false, error: error.message });
       });
+    }).catch(() => { try { sendResponse({ success: false, error: 'getState failed' }); } catch (_) {} });
     return true;
   }
 
@@ -178,6 +185,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: false, error: 'profileUrl required' });
       return true;
     }
+    // If automation was stopped (e.g. user started "Delete pending"), do not open new profile tabs
+    getState().then(({ state }) => {
+      if (state?.status === 'stopped') {
+        try { sendResponse({ success: true }); } catch (_) {}
+        return;
+      }
+      openProfileAndSendMessageImpl(message, sender, sendResponse);
+    }).catch(() => openProfileAndSendMessageImpl(message, sender, sendResponse));
+    return true;
+  }
+
+  // Implementation of OPEN_PROFILE_AND_SEND_MESSAGE (called after status check)
+  function openProfileAndSendMessageImpl(message, sender, sendResponse) {
+    const { profileUrl, profileId, profileName, trigger, storedMessage } = message.data || {};
+    const senderTabId = sender.tab?.id;
     chrome.storage.local.set({
       pendingProfilePageMessage: {
         profileUrl: profileUrl,
@@ -219,7 +241,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error('[Worker] Error in OPEN_PROFILE_AND_SEND_MESSAGE:', error);
         sendResponse({ success: false, error: error.message });
       });
-    return true; // Keep channel open for async response when tab sends PROFILE_PAGE_DONE
   }
 
   // Content script in worker tab signals "done with this profile/messenger" – resolve so scanner advances; do NOT close tab (reuse)
@@ -289,6 +310,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(() => sendResponse({ success: true }))
       .catch(error => {
         console.error('[Worker] Error in WAIT_FOR_TAB_LOAD:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
+  }
+
+  if (message.type === 'STOP_AUTOMATION') {
+    // Stop automation (e.g. when user starts "Delete pending requests" so we don't keep opening profile tabs)
+    updateState({ status: 'stopped', userRequestedStop: true })
+      .then(() => sendResponse({ success: true }))
+      .catch(error => {
+        console.error('[Worker] Error in STOP_AUTOMATION:', error);
         sendResponse({ success: false, error: error.message });
       });
     return true;

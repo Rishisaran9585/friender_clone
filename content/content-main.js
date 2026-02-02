@@ -116,6 +116,18 @@ function isFriendRequestBlocklistedName(text) {
   return false;
 }
 
+/** Return true if text is the "You're now friends with X" status phrase (not a real profile name). */
+function isAcceptedStatusPhrase(text) {
+  if (!text || typeof text !== 'string') return false;
+  return /^You\'re now friends with\s+.+$/i.test(text.trim());
+}
+/** If text is "You're now friends with X.", return "X"; otherwise return null. */
+function parseNameFromAcceptedStatusPhrase(text) {
+  if (!text || typeof text !== 'string') return null;
+  const m = text.trim().match(/^You\'re now friends with\s+(.+?)\s*[.\s]*$/i);
+  return m ? m[1].trim() : null;
+}
+
 /** Return true if text looks like a location (e.g. "Theni, India") rather than a person's name. */
 function looksLikeLocation(text) {
   if (!text || typeof text !== 'string') return false;
@@ -436,6 +448,9 @@ async function trySendPendingProfilePageMessageAfterRequest() {
       }
     }
     if (sent) {
+      // Remove from pending message retry list so we don't send to same profile again (fixes O Maharajan loop)
+      const idToRemove = urlId || wantId || null;
+      if (idToRemove) await safeSendMessage({ type: 'REMOVE_PENDING_RETRY', profileId: idToRemove });
       await safeSendMessage({ type: 'PROFILE_PAGE_DONE' });
     } else {
       const errMsg = (typeof lastErr?.message === 'string' ? lastErr.message : '') || '';
@@ -847,14 +862,27 @@ function setupPageMonitoring() {
       return true;
     } else if (message.type === 'DELETE_PENDING_REQUESTS') {
       if (window.facebookHandler) {
+        // Stop automation so it doesn't keep opening profile tabs while we're on the requests page
+        if (window.profileScanner) {
+          window.profileScanner.isScanning = false;
+        }
+        chrome.runtime.sendMessage({ type: 'STOP_AUTOMATION' }).catch(() => {});
         window.showFrienderToast('Deleting...', 'Cleaning up pending friend requests.', 'info');
-        window.facebookHandler.cancelAllPendingRequests().then(count => {
-          window.showFrienderToast('Done!', `Cancelled ${count} pending requests.`, 'success');
-          sendResponse({ success: true, count });
-        }).catch(err => {
-          window.showFrienderToast('Error', 'Failed to delete pending requests.', 'error');
-          sendResponse({ success: false, error: err.message });
-        });
+        window.facebookHandler.cancelAllPendingRequests()
+          .then(count => {
+            window.showFrienderToast('Done!', `Cancelled ${count} pending requests.`, 'success');
+            // When delete completes, clear pending list and counter so tool stops – no more visiting profiles
+            return new Promise(resolve => {
+              chrome.storage.local.set({ pendingFriendRequests: [], pendingRequestCount: 0 }, () => resolve(count));
+            });
+          })
+          .then(count => {
+            sendResponse({ success: true, count });
+          })
+          .catch(err => {
+            window.showFrienderToast('Error', 'Failed to delete pending requests.', 'error');
+            sendResponse({ success: false, error: err.message });
+          });
       } else {
         sendResponse({ success: false, error: 'Facebook handler not found' });
       }
@@ -990,30 +1018,30 @@ function showStartNotification() {
   toast.id = 'friender-start-toast';
   toast.style.cssText = `
     position: fixed;
-    bottom: 20px;
-    left: 20px;
+    bottom: 16px;
+    left: 16px;
     background: #ffdb99;
     color: #333;
-    padding: 18px 25px;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    padding: 10px 14px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
     z-index: 99999;
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 10px;
     font-family: inherit;
-    border-left: 5px solid #ffa500;
-    max-width: 400px;
+    border-left: 4px solid #ffa500;
+    max-width: 320px;
     animation: slideInFriender 0.5s ease-out;
   `;
 
   toast.innerHTML = `
-    <div style="width: 45px; height: 45px; background: #00d4ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px;">🚀</div>
+    <div style="width: 36px; height: 36px; background: #00d4ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">🚀</div>
     <div>
-      <div style="font-weight: bold; font-size: 16px; margin-bottom: 3px;">Friender has Started & Running</div>
-      <div style="font-size: 13px; color: #555;">Your script has been started. Do not refresh the page.</div>
+      <div style="font-weight: bold; font-size: 13px; margin-bottom: 2px;">Friender has Started & Running</div>
+      <div style="font-size: 11px; color: #555;">Your script has been started. Do not refresh the page.</div>
     </div>
-    <div id="close-friender-toast" style="margin-left: auto; cursor: pointer; font-size: 18px; color: #777;">×</div>
+    <div id="close-friender-toast" style="margin-left: auto; cursor: pointer; font-size: 16px; color: #777;">×</div>
   `;
 
   // Add animation styles
@@ -1030,22 +1058,29 @@ function showStartNotification() {
   document.getElementById('close-friender-toast').onclick = () => toast.remove();
 }
 
-// Global Toast function
+// Global Toast function – compact size; "limit reached" message shown in 2 lines
 window.showFrienderToast = function (title, message, type = 'info') {
+  const borderColor = type === 'success' ? '#4CAF50' : type === 'error' ? '#d32f2f' : type === 'warning' ? '#f57c00' : '#2196F3';
+  if (typeof message === 'string' && message.includes('limit reached')) {
+    message = message.replace(/\blimit reached\b/gi, 'limit<br>reached');
+  }
   const toast = document.createElement('div');
   toast.style.cssText = `
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: 16px;
+    right: 16px;
     background: white;
-    padding: 15px 20px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    padding: 8px 12px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
     z-index: 100000;
-    border-left: 4px solid ${type === 'success' ? '#4CAF50' : '#2196F3'};
+    border-left: 3px solid ${borderColor};
     font-family: inherit;
+    font-size: 12px;
+    line-height: 1.35;
+    max-width: 280px;
   `;
-  toast.innerHTML = `<strong>${title}</strong><div style="font-size: 13px; margin-top: 4px;">${message}</div>`;
+  toast.innerHTML = `<strong style="font-size: 12px;">${title}</strong><div style="font-size: 11px; margin-top: 2px;">${message}</div>`;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
 };
@@ -1548,15 +1583,16 @@ async function checkFriendRequestsPageForAllActions() {
 // One-time migration: old code marked requests as "processed" before sending; clear so pending requests get a real send attempt
 const INCOMING_TRACKING_MIGRATION_KEY = 'friender_incoming_tracking_migration_v2';
 const INCOMING_TRACKING_MIGRATION_V3_KEY = 'friender_incoming_tracking_migration_v3'; // Clear again after fixing "skipped" = tracked bug
+const INCOMING_TRACKING_MIGRATION_V4_KEY = 'friender_incoming_tracking_migration_v4'; // Clear again after fixing "empty input = return true" bug
 async function maybeClearIncomingTrackingMigration() {
-  const r = await chrome.storage.local.get([INCOMING_TRACKING_MIGRATION_KEY, INCOMING_TRACKING_MIGRATION_V3_KEY]);
-  if (r[INCOMING_TRACKING_MIGRATION_KEY]) {
-    if (r[INCOMING_TRACKING_MIGRATION_V3_KEY]) return;
+  const r = await chrome.storage.local.get([INCOMING_TRACKING_MIGRATION_KEY, INCOMING_TRACKING_MIGRATION_V3_KEY, INCOMING_TRACKING_MIGRATION_V4_KEY]);
+  if (r[INCOMING_TRACKING_MIGRATION_V4_KEY]) return;
+  if (r[INCOMING_TRACKING_MIGRATION_KEY] || r[INCOMING_TRACKING_MIGRATION_V3_KEY]) {
     await chrome.storage.local.set({
       incomingRequestsTracked: [],
-      [INCOMING_TRACKING_MIGRATION_V3_KEY]: true
+      [INCOMING_TRACKING_MIGRATION_V4_KEY]: true
     });
-    console.log('[Friender] Cleared incoming request tracking (v3) so previously skipped requests can be messaged.');
+    console.log('[Friender] Cleared incoming request tracking (v4) so wrongly-marked requests can be messaged.');
     return;
   }
   await chrome.storage.local.set({
@@ -2360,12 +2396,18 @@ async function checkAcceptedRequestsOnFriendRequestsPage() {
         const nameSpans = entry.querySelectorAll('span[dir="auto"]');
         for (const span of nameSpans) {
           const txt = span.textContent?.trim() || '';
-          if (txt.length > 2 && txt.length < 100 && 
-              !txt.includes('mutual friends') && 
+          if (txt.length > 2 && txt.length < 100 &&
+              !txt.includes('mutual friends') &&
               !txt.includes('Request accepted') &&
-              !txt.includes('ago') && !looksLikeLocation(txt)) {
+              !txt.includes('ago') && !looksLikeLocation(txt) &&
+              !isAcceptedStatusPhrase(txt)) {
             profileName = txt;
             break;
+          }
+          // If the only candidate is "You're now friends with X.", use the extracted name
+          if (isAcceptedStatusPhrase(txt)) {
+            const parsed = parseNameFromAcceptedStatusPhrase(txt);
+            if (parsed && profileName === 'Unknown') profileName = parsed;
           }
         }
         
@@ -2373,15 +2415,24 @@ async function checkAcceptedRequestsOnFriendRequestsPage() {
           const nestedNameSpans = entry.querySelectorAll('span[dir="auto"] span');
           for (const span of nestedNameSpans) {
             const txt = span.textContent?.trim() || '';
-            if (txt.length > 2 && txt.length < 100 && !txt.includes('mutual') && !looksLikeLocation(txt)) {
+            if (txt.length > 2 && txt.length < 100 && !txt.includes('mutual') && !looksLikeLocation(txt) && !isAcceptedStatusPhrase(txt)) {
               profileName = txt;
               break;
+            }
+            if (isAcceptedStatusPhrase(txt)) {
+              const parsed = parseNameFromAcceptedStatusPhrase(txt);
+              if (parsed && profileName === 'Unknown') profileName = parsed;
             }
           }
         }
         
         profileName = profileName.replace(/\s+/g, ' ').trim();
         profileName = normalizeFriendRequestDisplayName(profileName);
+        // If we still have the status sentence as "name", replace with the actual name (e.g. "Pamela")
+        if (isAcceptedStatusPhrase(profileName)) {
+          const parsed = parseNameFromAcceptedStatusPhrase(profileName);
+          if (parsed) profileName = parsed;
+        }
         
         // Find profile link: same logic as incoming requests – use isFacebookProfileUrl and search entry + parents
         let profileUrl = null;
@@ -2439,24 +2490,37 @@ async function checkAcceptedRequestsOnFriendRequestsPage() {
           profileName = normalizeFriendRequestDisplayName(profileName);
         }
         
+        // Fallback: extract profile URL/ID from Message link (e.g. /messages/t/61587205104052) when we have no profile link
+        if (!profileUrl && entry) {
+          const msgLinks = entry.querySelectorAll('a[href*="/messages/t/"], a[href*="/messages/thread/"]');
+          for (const a of msgLinks) {
+            const href = a.href || a.getAttribute('href') || '';
+            const idFromMsg = href.match(/\/messages\/t\/(\d+)/)?.[1] || href.match(/\/messages\/thread\/[^\/]*\/(\d+)/)?.[1];
+            if (idFromMsg && /^\d+$/.test(idFromMsg)) {
+              profileUrl = `https://www.facebook.com/profile.php?id=${idFromMsg}`;
+              break;
+            }
+          }
+        }
+
+        // Extract profile ID from URL (profile link or Message link)
+        let profileId = null;
+        if (profileUrl && typeof profileUrl === 'string') {
+          const idMatch = profileUrl.match(/profile\.php\?id=(\d+)/) ||
+                         profileUrl.match(/[?&]profile_id=(\d+)/) ||
+                         profileUrl.match(/user\/(\d+)/) ||
+                         profileUrl.match(/facebook\.com\/([^\/\?]+)/);
+          if (idMatch) {
+            profileId = idMatch[1];
+          }
+        }
+
         // Skip UI labels that are not real profile names (See all, Friends, Notifications, etc.)
         const acceptedNameBlocklist = /^(See all|Friends?|Notifications?|Friend requests?|Add friend|Message|Confirm|Delete|Sponsored|Build Your App Now)$/i;
         if (acceptedNameBlocklist.test(profileName.trim())) continue;
         if (profileName === 'Unknown' && !profileUrl) continue;
 
         if (profileName !== 'Unknown' || profileUrl) {
-          
-          // Extract profile ID from URL (include profile_id= for friends/requests links)
-          let profileId = null;
-          if (profileUrl && typeof profileUrl === 'string') {
-            const idMatch = profileUrl.match(/profile\.php\?id=(\d+)/) ||
-                           profileUrl.match(/[?&]profile_id=(\d+)/) ||
-                           profileUrl.match(/user\/(\d+)/) ||
-                           profileUrl.match(/facebook\.com\/([^\/\?]+)/);
-            if (idMatch) {
-              profileId = idMatch[1];
-            }
-          }
           
           // If we have name but no URL/ID, try to resolve from pending requests (we stored them when they sent the request)
           if ((!profileUrl || !profileId) && profileName !== 'Unknown') {
@@ -2471,10 +2535,13 @@ async function checkAcceptedRequestsOnFriendRequestsPage() {
               if (!profileId && pending.profileId) profileId = pending.profileId;
             }
           }
-          
+
+          // Only add entries we can act on (have URL or ID). Skip status-only cards like "You're now friends with Pamela." when we have no link – avoids repeated warnings and processing.
+          if (!profileUrl && !profileId) continue;
+
           // Create a unique key for this accepted request
           const requestKey = profileId || profileUrl || profileName.toLowerCase();
-          
+
           // Check if we've already processed this request
           if (!acceptedRequestsTracked.has(requestKey)) {
             acceptedProfiles.push({
@@ -2541,6 +2608,21 @@ async function checkAcceptedRequestsOnFriendRequestsPage() {
             }
             if (profile.url || profile.profileId) console.log(`[Friender] Resolved URL/ID for ${profile.name} from card link`);
             break;
+          }
+        }
+        // Also try Message link (e.g. /messages/t/61587205104052) to get profile ID
+        if (!profile.profileId && !profile.url) {
+          const msgLinks = profile.entryElement.querySelectorAll('a[href*="/messages/t/"], a[href*="/messages/thread/"]');
+          for (const a of msgLinks) {
+            const href = a.href || a.getAttribute('href') || '';
+            const idFromMsg = href.match(/\/messages\/t\/(\d+)/)?.[1] || href.match(/\/messages\/thread\/[^\/]*\/(\d+)/)?.[1];
+            if (idFromMsg && /^\d+$/.test(idFromMsg)) {
+              profile.url = `https://www.facebook.com/profile.php?id=${idFromMsg}`;
+              profile.profileId = idFromMsg;
+              profile.key = profile.profileId;
+              console.log(`[Friender] Resolved URL/ID for ${profile.name} from Message link`);
+              break;
+            }
           }
         }
       }
